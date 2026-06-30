@@ -44,6 +44,13 @@ for canon, alias in _LANG.items():
     after = rf"\b(?:{alias})\b[^.\n]{{0,30}}?(?:{_QUAL}|language)"
     _LANG_RE[canon] = re.compile(f"(?:{before})|(?:{after})", re.I)
 
+# English is assumed for the candidate, so only NON-English requirements matter.
+# A cheap presence check lets us skip the expensive windowed regex for the ~95% of
+# postings that never mention a foreign language.
+_NON_ENGLISH = {c: a for c, a in _LANG.items() if c != "English"}
+_NON_ENGLISH_PRESENT = re.compile(
+    "|".join(rf"\b(?:{a})\b" for a in _NON_ENGLISH.values()), re.I)
+
 
 def parse_spoken(text: str):
     """Parse a user's free-text languages box into a canonical set."""
@@ -57,7 +64,8 @@ def parse_spoken(text: str):
 
 
 def required_languages(text: str):
-    """Languages a posting appears to require."""
-    if not text:
+    """Non-English languages a posting appears to require (English is assumed)."""
+    if not text or not _NON_ENGLISH_PRESENT.search(text):
         return set()
-    return {canon for canon, rx in _LANG_RE.items() if rx.search(text)}
+    return {canon for canon, rx in _LANG_RE.items()
+            if canon != "English" and rx.search(text)}

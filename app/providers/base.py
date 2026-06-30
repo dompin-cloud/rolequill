@@ -98,7 +98,7 @@ class JobPosting:
 
     # cap stored JD text — keyword/skill/ATS matching only needs the early sections,
     # and full JDs (some many KB each, thousands per search) blow up memory on small hosts
-    DESC_CAP = 5000
+    DESC_CAP = 2500
 
     def __post_init__(self):
         # safety net: never let a structured pay object reach the UI/Excel

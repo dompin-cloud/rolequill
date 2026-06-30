@@ -52,7 +52,10 @@ def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
 
     seen = set()
     scored = []
-    for job in raw:
+    total = len(raw)
+    for idx, job in enumerate(raw):
+        if progress and idx and idx % 500 == 0:
+            progress(idx, total, f"Filtering & scoring {idx}/{total} postings…")
         key = (job.company.lower().strip(), job.role.lower().strip())
         if key in seen:
             continue

@@ -53,27 +53,31 @@ SKILLS = {
                              "onboarding", "forward deployed", "solutions engineer"],
 }
 
-# Precompile matchers
-_COMPILED = {}
-for canon, aliases in SKILLS.items():
-    pats = []
-    for a in aliases:
-        a = a.strip()
-        if not a:
+# Precompile a SINGLE combined regex (one named group per canonical skill) so a
+# whole posting is scanned in one pass instead of ~40 separate searches. This is
+# the hot path — called once per posting during scoring.
+_GROUP_TO_CANON = {}
+_parts = []
+for _i, (_canon, _aliases) in enumerate(SKILLS.items()):
+    _g = f"s{_i}"
+    _GROUP_TO_CANON[_g] = _canon
+    _alts = []
+    for _a in _aliases:
+        _a = _a.strip()
+        if not _a:
             continue
-        if re.fullmatch(r"[a-z0-9]+", a):
-            pats.append(re.compile(r"\b" + re.escape(a) + r"\b"))
+        if re.fullmatch(r"[a-z0-9]+", _a):
+            _alts.append(r"\b" + re.escape(_a) + r"\b")
         else:
-            pats.append(re.compile(re.escape(a)))
-    _COMPILED[canon] = pats
+            _alts.append(re.escape(_a))
+    _parts.append(f"(?P<{_g}>" + "|".join(_alts) + ")")
+_COMBINED = re.compile("|".join(_parts))
 
 
 def extract_skills(text: str) -> set[str]:
     if not text:
         return set()
-    low = " " + text.lower() + " "
     found = set()
-    for canon, pats in _COMPILED.items():
-        if any(p.search(low) for p in pats):
-            found.add(canon)
+    for m in _COMBINED.finditer(text.lower()):
+        found.add(_GROUP_TO_CANON[m.lastgroup])
     return found

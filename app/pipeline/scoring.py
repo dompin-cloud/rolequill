@@ -135,13 +135,10 @@ def geo_verdict(desired_geo, job):
 def skill_alignment(profile_terms, jd_low: str) -> int:
     """Count how many of the candidate's own resume keywords appear in the JD."""
     hits = 0
-    for t in profile_terms:
-        if len(t) < 3:
+    for t in profile_terms[:40]:   # bounded: keeps the hot loop cheap
+        if len(t) < 4:
             continue
-        if " " in t or len(t) >= 5:
-            if t in jd_low:
-                hits += 1
-        elif re.search(r"\b" + re.escape(t) + r"\b", jd_low):
+        if t in jd_low:
             hits += 1
     return hits
 

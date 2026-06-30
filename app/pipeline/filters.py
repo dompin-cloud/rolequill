@@ -30,7 +30,7 @@ def classify(job) -> tuple[bool, list[str]]:
     """Return (keep, reasons). If keep is False, `reasons` says why it was dropped."""
     reasons = []
     title = job.role or ""
-    desc = job.description or ""
+    desc = (job.description or "")[:1500]   # scam signals show up early; keep it cheap
 
     if not job.apply_link or not job.apply_link.startswith("http"):
         return False, ["no valid application link"]
