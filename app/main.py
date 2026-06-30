@@ -169,21 +169,37 @@ def stripe_webhook():
         abort(400)
 
     if event.get("type") == "checkout.session.completed":
-        sess = event["data"]["object"]
+        sess = (event.get("data") or {}).get("object") or {}
         db = get_db()
         try:
             db.execute("INSERT INTO stripe_events (id) VALUES (?)", (event["id"],))
             db.commit()
         except sqlite3.IntegrityError:
             return "", 200  # already processed
-        meta = sess.get("metadata") or {}
-        try:
-            uid = int(meta.get("user_id") or sess.get("client_reference_id") or 0)
-            n = int(meta.get("credits") or 0)
-        except (TypeError, ValueError):
-            uid, n = 0, 0
+
+        def _ids(obj):
+            meta = obj.get("metadata") or {}
+            try:
+                return (int(meta.get("user_id") or obj.get("client_reference_id") or 0),
+                        int(meta.get("credits") or 0))
+            except (TypeError, ValueError):
+                return 0, 0
+
+        uid, n = _ids(sess)
+        # Thin-payload destinations omit metadata — fetch the full session by id.
+        if (not uid or not n):
+            sess_id = sess.get("id") or (event.get("related_object") or {}).get("id")
+            if sess_id and str(sess_id).startswith("cs_"):
+                try:
+                    stripe.api_key = current_app.config.get("STRIPE_SECRET_KEY")
+                    full = stripe.checkout.Session.retrieve(sess_id)
+                    uid, n = _ids(full)
+                    sess = full
+                except Exception:  # noqa: BLE001
+                    pass
         if uid and n:
-            credits.add_purchase(db, uid, n, note=f"Stripe purchase {sess.get('id', '')}")
+            credits.add_purchase(db, uid, n,
+                                 note=f"Stripe purchase {sess.get('id', '')}")
     return "", 200
 
 
