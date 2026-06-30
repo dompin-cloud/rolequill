@@ -24,6 +24,7 @@ def create_app(config_object=Config):
     pay = app.config.get("PAYMENTS_MODE", "stub")
     env_state = f"found at {DOTENV_PATH}" if DOTENV_LOADED else f"NOT FOUND at {DOTENV_PATH}"
     print(f"[RoleQuill] .env: {env_state}")
+    print(f"[RoleQuill] Database: {app.config.get('DATABASE')}")
     print(f"[RoleQuill] Google Jobs: {gj} | Payments: {pay}")
 
     # production safety warnings

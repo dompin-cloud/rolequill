@@ -13,9 +13,11 @@ services:
     healthCheckPath: /auth/login
     disk:
       name: data
-      mountPath: /opt/render/project/src/data   # SQLite db + resumes + Excel exports
+      mountPath: /var/data                       # SQLite db + resumes + Excel exports
       sizeGB: 1
     envVars:
+      - key: ROLEQUILL_DATA_DIR                   # write all data onto the disk
+        value: /var/data
       - key: ROLEQUILL_DEBUG
         value: "0"
       - key: ROLEQUILL_HTTPS

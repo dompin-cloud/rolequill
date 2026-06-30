@@ -3,7 +3,10 @@ import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
+# Where the SQLite db, uploaded resumes, and Excel exports live. Point this at a
+# PERSISTENT DISK in production (e.g. ROLEQUILL_DATA_DIR=/var/data on Render) so
+# accounts/credits survive redeploys. Defaults to ./data for local dev.
+DATA_DIR = Path(os.environ.get("ROLEQUILL_DATA_DIR") or (BASE_DIR / "data"))
 UPLOAD_DIR = DATA_DIR / "resumes"
 EXPORT_DIR = DATA_DIR / "exports"
 
