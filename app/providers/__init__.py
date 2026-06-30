@@ -1,9 +1,11 @@
 """Provider registry + parallel fan-out fetch across all free ATS sources."""
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 
 from .ashby import AshbyProvider
+from .base import SearchTimeout
 from .companies import REGISTRY
 from .google_jobs import GoogleJobsProvider
 from .greenhouse import GreenhouseProvider
@@ -24,10 +26,13 @@ def _make_session():
     return s
 
 
-def fetch_all(max_per_provider=60, workers=16, timeout=12, progress=None):
+def fetch_all(max_per_provider=60, workers=16, timeout=12, progress=None,
+              deadline=None):
     """Fan out across every provider/company and return a flat list of JobPosting.
 
     `progress(done, total, msg)` is an optional callback for live status updates.
+    `deadline` is a time.monotonic() value; if exceeded mid-scan, raises SearchTimeout
+    (queued board fetches are cancelled).
     """
     session = _make_session()
     providers = {name: cls(session, timeout=timeout)
@@ -48,22 +53,27 @@ def fetch_all(max_per_provider=60, workers=16, timeout=12, progress=None):
         except Exception:
             return []
 
-    with ThreadPoolExecutor(max_workers=workers) as ex:
+    # managed without a `with` block so we can shut down without waiting on the
+    # queued futures when the deadline is hit
+    ex = ThreadPoolExecutor(max_workers=workers)
+    try:
         futures = {ex.submit(_one, name, token): (name, token)
                    for name, token in tasks if token}
         for fut in as_completed(futures):
-            name, token = futures[fut]
-            jobs = fut.result()
-            results.extend(jobs)
+            results.extend(fut.result())
             done += 1
             if progress:
                 progress(done, total,
                          f"Scanned {done}/{total} boards — {len(results)} raw postings")
+            if deadline and time.monotonic() > deadline:
+                raise SearchTimeout("fetch phase exceeded time limit")
+    finally:
+        ex.shutdown(wait=False, cancel_futures=True)
     return results
 
 
 def fetch_query_sources(query, location="", *, serpapi_key=None, pages=1,
-                        timeout=15, progress=None):
+                        timeout=15, progress=None, deadline=None):
     """Query-based providers (Google Jobs).
 
     Returns (results, status). status is human-readable so the UI can explain why
@@ -73,6 +83,8 @@ def fetch_query_sources(query, location="", *, serpapi_key=None, pages=1,
         return [], "disabled (no SERPAPI_KEY set)"
     if not query:
         return [], "skipped (no title or resume skills to query)"
+    if deadline and time.monotonic() > deadline:
+        return [], "skipped (time limit)"
     if progress:
         progress(0, 0, "Querying Google Jobs…")
     session = _make_session()

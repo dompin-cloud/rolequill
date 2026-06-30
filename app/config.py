@@ -70,6 +70,8 @@ class Config:
     MAX_COMPANIES_PER_PROVIDER = int(os.environ.get("JOBSEARCH_MAX_COMPANIES", "60"))
     FETCH_WORKERS = int(os.environ.get("JOBSEARCH_WORKERS", "16"))
     FETCH_TIMEOUT = 12  # seconds per HTTP call
+    # overall wall-clock limit per search; exceeding it cancels + refunds the credit
+    SEARCH_TIME_LIMIT = int(os.environ.get("ROLEQUILL_SEARCH_TIMEOUT", "120"))
 
     # Google Jobs via SerpApi (optional; disabled until a key is set).
     # Accept either common env var name.

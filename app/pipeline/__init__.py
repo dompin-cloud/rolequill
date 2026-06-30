@@ -1,6 +1,9 @@
 """End-to-end search pipeline: fetch -> filter -> score -> rank."""
+import time
+
 from . import geo, lang
 from ..providers import fetch_all, fetch_query_sources
+from ..providers.base import SearchTimeout
 from .filters import classify
 from .scoring import geo_verdict, score_job, title_relevance, work_type_ok
 
@@ -12,9 +15,10 @@ SKILL_FLOOR = 2           # with no title, require >=N resume-skill/keyword over
 
 def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
                timeout, progress=None, profile_terms=(), serpapi_key=None,
-               google_pages=1):
+               google_pages=1, time_limit=None):
     """criteria: title_query, location, min_pay, work_type, languages.
-    Returns (ranked_jobs, stats)."""
+    Returns (ranked_jobs, stats). Raises SearchTimeout if it exceeds time_limit secs."""
+    deadline = (time.monotonic() + time_limit) if time_limit else None
     resume_skills = set(resume_skills or [])
     profile_terms = list(profile_terms or [])
     title_query = criteria.get("title_query") or ""
@@ -26,7 +30,7 @@ def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
     desired_geo = geo.desired_regions(location)
 
     raw = fetch_all(max_per_provider=max_per_provider, workers=workers,
-                    timeout=timeout, progress=progress)
+                    timeout=timeout, progress=progress, deadline=deadline)
 
     # query-based sources (Google Jobs) — title, else top resume skills/terms.
     # Keep the query broad: appending the raw location ("Remote USA") over-constrains
@@ -39,7 +43,7 @@ def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
         google_q = f"{google_q} {work_type}"
     google, google_status = fetch_query_sources(
         google_q, "", serpapi_key=serpapi_key, pages=google_pages,
-        timeout=timeout, progress=progress)
+        timeout=timeout, progress=progress, deadline=deadline)
     raw.extend(google)
 
     stats = {"raw": len(raw), "from_google": len(google),
@@ -54,8 +58,11 @@ def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
     scored = []
     total = len(raw)
     for idx, job in enumerate(raw):
-        if progress and idx and idx % 500 == 0:
-            progress(idx, total, f"Filtering & scoring {idx}/{total} postings…")
+        if idx % 250 == 0:
+            if deadline and time.monotonic() > deadline:
+                raise SearchTimeout("scoring phase exceeded time limit")
+            if progress and idx:
+                progress(idx, total, f"Filtering & scoring {idx}/{total} postings…")
         key = (job.company.lower().strip(), job.role.lower().strip())
         if key in seen:
             continue

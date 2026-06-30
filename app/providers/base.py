@@ -12,6 +12,10 @@ _MAX_KEYS = ("max_value", "maxValue", "max", "max_cents", "maximum", "high")
 _CUR_KEYS = ("unit", "currency", "currencyCode", "currency_type", "currencyType")
 
 
+class SearchTimeout(Exception):
+    """Raised when a search exceeds its overall wall-clock time limit."""
+
+
 def _num(d, keys):
     for k in keys:
         if k in d and d[k] not in (None, ""):

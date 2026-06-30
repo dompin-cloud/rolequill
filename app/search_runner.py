@@ -8,6 +8,7 @@ from . import credits
 from .db import standalone_connection
 from .pipeline import run_search
 from .pipeline.excel_export import build_workbook, post_status
+from .providers.base import SearchTimeout
 
 
 def start_search(app, search_id):
@@ -67,6 +68,7 @@ def _run(app, search_id):
             profile_terms=profile_terms,
             serpapi_key=cfg.get("SERPAPI_KEY"),
             google_pages=cfg.get("GOOGLE_JOBS_PAGES", 1),
+            time_limit=cfg.get("SEARCH_TIME_LIMIT", 120),
         )
 
         # persist jobs
@@ -105,6 +107,17 @@ def _run(app, search_id):
             note += " No matches, so your credit was refunded."
         _set(conn, search_id, status="done", progress=note,
              result_count=stats["kept"], export_path=out_path,
+             finished_at=datetime.now().isoformat(timespec="seconds"))
+    except SearchTimeout:
+        # exceeded the time limit -> cancel the search and refund the credit
+        if s is not None and s["credit_source"] in ("free", "paid"):
+            try:
+                credits.refund_search(conn, s["user_id"], s["credit_source"])
+            except Exception:
+                pass
+        _set(conn, search_id, status="error", result_count=0,
+             error="Search exceeded the time limit and was cancelled.",
+             progress="Search took too long — it was cancelled and your credit refunded.",
              finished_at=datetime.now().isoformat(timespec="seconds"))
     except Exception as e:  # noqa: BLE001
         import traceback
