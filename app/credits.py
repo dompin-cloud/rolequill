@@ -109,3 +109,27 @@ def add_purchase(db, user_id, credits, note="Credit pack purchase"):
                (credits, user_id))
     _log(db, user_id, credits, "purchase", note)
     db.commit()
+
+
+def reconcile_orphans(db):
+    """Cancel + refund searches stuck in running/pending from a killed process.
+
+    Any in-flight search dies when the server restarts (redeploy/crash), leaving its
+    status stuck. At startup nothing is genuinely running yet, so every such row is
+    orphaned: mark it cancelled and refund the credit. Idempotent — once flipped to
+    'error' it won't be reconciled again.
+    """
+    rows = db.execute(
+        "SELECT id, user_id, credit_source FROM searches "
+        "WHERE status IN ('running', 'pending')").fetchall()
+    for r in rows:
+        if r["credit_source"] in ("free", "paid"):
+            refund_search(db, r["user_id"], r["credit_source"])
+    db.execute(
+        "UPDATE searches SET status = 'error', result_count = 0, "
+        "error = 'Cancelled — interrupted by a server restart.', "
+        "progress = 'Search was interrupted and cancelled; your credit was refunded.', "
+        "finished_at = ? WHERE status IN ('running', 'pending')",
+        (_now().isoformat(timespec="seconds"),))
+    db.commit()
+    return len(rows)

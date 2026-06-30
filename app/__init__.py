@@ -17,6 +17,18 @@ def create_app(config_object=Config):
     from . import db
     db.init_app(app)
 
+    # heal searches left "running" by a previous (killed) process: cancel + refund
+    with app.app_context():
+        from . import credits
+        from .db import get_db
+        try:
+            healed = credits.reconcile_orphans(get_db())
+            if healed:
+                print(f"[RoleQuill] Reconciled {healed} interrupted search(es) "
+                      "— cancelled and refunded.")
+        except Exception as _e:  # never block startup on this
+            print(f"[RoleQuill] orphan reconcile skipped: {_e}")
+
     # one-line visibility on optional integrations at startup
     from .config import DOTENV_LOADED, DOTENV_PATH
     key = app.config.get("SERPAPI_KEY") or ""
