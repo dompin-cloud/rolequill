@@ -169,13 +169,12 @@ def stripe_webhook():
         abort(400)
 
     if event.get("type") == "checkout.session.completed":
-        sess = (event.get("data") or {}).get("object") or {}
         db = get_db()
-        try:
-            db.execute("INSERT INTO stripe_events (id) VALUES (?)", (event["id"],))
-            db.commit()
-        except sqlite3.IntegrityError:
-            return "", 200  # already processed
+        eid = event.get("id")
+        # idempotency: skip if we've already processed this event
+        if eid and db.execute("SELECT 1 FROM stripe_events WHERE id = ?",
+                              (eid,)).fetchone():
+            return "", 200
 
         def _ids(obj):
             meta = obj.get("metadata") or {}
@@ -185,21 +184,36 @@ def stripe_webhook():
             except (TypeError, ValueError):
                 return 0, 0
 
-        uid, n = _ids(sess)
-        # Thin-payload destinations omit metadata — fetch the full session by id.
-        if (not uid or not n):
-            sess_id = sess.get("id") or (event.get("related_object") or {}).get("id")
-            if sess_id and str(sess_id).startswith("cs_"):
-                try:
+        try:
+            sess = (event.get("data") or {}).get("object") or {}
+            uid, n = _ids(sess)
+            # Thin-payload destinations omit metadata — fetch the full session by id.
+            if not uid or not n:
+                sess_id = sess.get("id") or (event.get("related_object") or {}).get("id")
+                if sess_id and str(sess_id).startswith("cs_"):
                     stripe.api_key = current_app.config.get("STRIPE_SECRET_KEY")
                     full = stripe.checkout.Session.retrieve(sess_id)
                     uid, n = _ids(full)
                     sess = full
-                except Exception:  # noqa: BLE001
-                    pass
-        if uid and n:
-            credits.add_purchase(db, uid, n,
-                                 note=f"Stripe purchase {sess.get('id', '')}")
+
+            note = f"Stripe purchase {sess.get('id', '')}"
+            if uid and n:
+                exists = db.execute("SELECT 1 FROM users WHERE id = ?", (uid,)).fetchone()
+                if exists:
+                    credits.add_purchase(db, uid, n, note=note)
+                else:
+                    current_app.logger.warning(
+                        "Stripe webhook: user %s no longer exists; cannot credit %s",
+                        uid, note)
+            else:
+                current_app.logger.warning(
+                    "Stripe webhook: no user_id/credits on event %s", eid)
+            # mark processed only after we've handled it (no further retries needed)
+            db.execute("INSERT OR IGNORE INTO stripe_events (id) VALUES (?)", (eid,))
+            db.commit()
+        except Exception:  # noqa: BLE001 — log + 500 so Stripe retries transient errors
+            current_app.logger.exception("Stripe webhook fulfillment failed")
+            return "", 500
     return "", 200
 
 
