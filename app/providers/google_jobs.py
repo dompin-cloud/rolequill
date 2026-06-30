@@ -64,7 +64,11 @@ class GoogleJobsProvider:
                 data = resp.json()
             except ValueError:
                 data = {}
-            # Surface SerpApi failures (bad key, exhausted quota, bad params) on page 1
+            # "no results" is normal (narrow query), not a failure — return empty.
+            err = (data.get("error") or "").lower()
+            if "hasn't returned" in err or "has not returned" in err or "no results" in err:
+                break
+            # Surface real SerpApi failures (bad key, exhausted quota, bad params).
             if resp.status_code != 200 or data.get("error"):
                 msg = data.get("error") or f"HTTP {resp.status_code}"
                 if page == 0:

@@ -28,12 +28,17 @@ def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
     raw = fetch_all(max_per_provider=max_per_provider, workers=workers,
                     timeout=timeout, progress=progress)
 
-    # query-based sources (Google Jobs) — title, else top resume skills/terms
+    # query-based sources (Google Jobs) — title, else top resume skills/terms.
+    # Keep the query broad: appending the raw location ("Remote USA") over-constrains
+    # Google and returns nothing. Just nudge "remote" when relevant; our own geo +
+    # work-type filters narrow the results afterward.
     google_q = (title_query.strip()
                 or " ".join(profile_terms[:4])
                 or " ".join(sorted(resume_skills)[:4]))
+    if google_q and work_type in ("remote", "hybrid"):
+        google_q = f"{google_q} {work_type}"
     google, google_status = fetch_query_sources(
-        google_q, location, serpapi_key=serpapi_key, pages=google_pages,
+        google_q, "", serpapi_key=serpapi_key, pages=google_pages,
         timeout=timeout, progress=progress)
     raw.extend(google)
 
