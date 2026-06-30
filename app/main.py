@@ -157,63 +157,74 @@ def stripe_webhook():
 
     Verifies the signature and is idempotent (each event fulfilled at most once).
     """
-    import sqlite3
+    import json
     secret = current_app.config.get("STRIPE_WEBHOOK_SECRET")
     if not secret:
         abort(404)
     import stripe
+    payload = request.get_data()
     try:
-        event = stripe.Webhook.construct_event(
-            request.get_data(), request.headers.get("Stripe-Signature", ""), secret)
+        # verify the signature only; we read fields from the raw JSON below because
+        # newer Stripe objects are not dict-like (no .get()).
+        stripe.Webhook.construct_event(
+            payload, request.headers.get("Stripe-Signature", ""), secret)
     except Exception:  # noqa: BLE001 — bad signature / malformed
         abort(400)
 
-    if event.get("type") == "checkout.session.completed":
-        db = get_db()
-        eid = event.get("id")
-        # idempotency: skip if we've already processed this event
-        if eid and db.execute("SELECT 1 FROM stripe_events WHERE id = ?",
-                              (eid,)).fetchone():
-            return "", 200
+    try:
+        event = json.loads(payload)
+    except (ValueError, TypeError):
+        return "", 200
 
-        def _ids(obj):
-            meta = obj.get("metadata") or {}
-            try:
-                return (int(meta.get("user_id") or obj.get("client_reference_id") or 0),
-                        int(meta.get("credits") or 0))
-            except (TypeError, ValueError):
-                return 0, 0
+    if event.get("type") != "checkout.session.completed":
+        return "", 200
 
+    db = get_db()
+    eid = event.get("id")
+    if eid and db.execute("SELECT 1 FROM stripe_events WHERE id = ?",
+                          (eid,)).fetchone():
+        return "", 200  # already processed
+
+    def _ids(obj):
+        obj = obj or {}
+        meta = obj.get("metadata") or {}
         try:
-            sess = (event.get("data") or {}).get("object") or {}
-            uid, n = _ids(sess)
-            # Thin-payload destinations omit metadata — fetch the full session by id.
-            if not uid or not n:
-                sess_id = sess.get("id") or (event.get("related_object") or {}).get("id")
-                if sess_id and str(sess_id).startswith("cs_"):
+            return (int(meta.get("user_id") or obj.get("client_reference_id") or 0),
+                    int(meta.get("credits") or 0))
+        except (TypeError, ValueError):
+            return 0, 0
+
+    try:
+        sess = (event.get("data") or {}).get("object") or {}
+        uid, n = _ids(sess)
+        # Thin-payload destinations omit metadata — fetch the full session by id.
+        if not uid or not n:
+            sess_id = sess.get("id") or (event.get("related_object") or {}).get("id")
+            if sess_id and str(sess_id).startswith("cs_"):
+                try:
                     stripe.api_key = current_app.config.get("STRIPE_SECRET_KEY")
-                    full = stripe.checkout.Session.retrieve(sess_id)
+                    full = json.loads(str(stripe.checkout.Session.retrieve(sess_id)))
                     uid, n = _ids(full)
                     sess = full
+                except Exception:  # noqa: BLE001
+                    pass
 
-            note = f"Stripe purchase {sess.get('id', '')}"
-            if uid and n:
-                exists = db.execute("SELECT 1 FROM users WHERE id = ?", (uid,)).fetchone()
-                if exists:
-                    credits.add_purchase(db, uid, n, note=note)
-                else:
-                    current_app.logger.warning(
-                        "Stripe webhook: user %s no longer exists; cannot credit %s",
-                        uid, note)
+        note = f"Stripe purchase {sess.get('id', '')}"
+        if uid and n:
+            if db.execute("SELECT 1 FROM users WHERE id = ?", (uid,)).fetchone():
+                credits.add_purchase(db, uid, n, note=note)
             else:
                 current_app.logger.warning(
-                    "Stripe webhook: no user_id/credits on event %s", eid)
-            # mark processed only after we've handled it (no further retries needed)
-            db.execute("INSERT OR IGNORE INTO stripe_events (id) VALUES (?)", (eid,))
-            db.commit()
-        except Exception:  # noqa: BLE001 — log + 500 so Stripe retries transient errors
-            current_app.logger.exception("Stripe webhook fulfillment failed")
-            return "", 500
+                    "Stripe webhook: user %s no longer exists; cannot credit %s",
+                    uid, note)
+        else:
+            current_app.logger.warning(
+                "Stripe webhook: no user_id/credits on event %s", eid)
+        db.execute("INSERT OR IGNORE INTO stripe_events (id) VALUES (?)", (eid,))
+        db.commit()
+    except Exception:  # noqa: BLE001
+        current_app.logger.exception("Stripe webhook fulfillment failed")
+        return "", 500
     return "", 200
 
 
