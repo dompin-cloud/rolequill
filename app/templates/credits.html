@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Credits — RoleQuill{% endblock %}
+{% block content %}
+<a class="muted" href="{{ url_for('main.dashboard') }}">← Dashboard</a>
+<h2>Search credits</h2>
+
+<div class="balance-card">
+  <div class="bal-num">🪶 {{ bal.total }}</div>
+  <div class="bal-detail">
+    {{ bal.free }} free <span class="muted">(refills weekly)</span>
+    · {{ bal.paid }} purchased <span class="muted">(never expire)</span>
+  </div>
+  <p class="muted">1 credit = 1 full search (scan → score → Excel). You're only charged
+  for successful runs — empty or failed searches are refunded automatically.</p>
+</div>
+
+{% if not live %}
+  <div class="flash flash-success" style="margin-top:14px">
+    💳 Test mode — purchases add credits instantly without charging. Connect Stripe to
+    accept real payments.
+  </div>
+{% endif %}
+
+<h3 style="margin-top:24px">Credit packs</h3>
+<div class="packs">
+  {% for p in packs %}
+    <div class="pack">
+      <div class="pack-name">{{ p.name }}</div>
+      <div class="pack-credits">{{ p.credits }} credits</div>
+      <div class="pack-price">${{ p.price_usd }}</div>
+      <div class="pack-per muted">{{ p.per_search }} / search</div>
+      <form method="post" action="{{ url_for('main.buy_credits', pack_id=p.id) }}">
+        <button class="btn" type="submit">{{ 'Buy' if live else 'Get (test)' }}</button>
+      </form>
+    </div>
+  {% endfor %}
+</div>
+
+<h3 style="margin-top:24px">History</h3>
+{% if history %}
+  <table class="tbl">
+    <thead><tr><th>When</th><th>Activity</th><th>Change</th><th>Balance</th></tr></thead>
+    <tbody>
+    {% for h in history %}
+      <tr>
+        <td>{{ h.created_at }}</td>
+        <td>{{ h.note or h.kind }}</td>
+        <td class="{{ 'pos' if h.delta > 0 else 'neg' }}">{{ '+' if h.delta > 0 else '' }}{{ h.delta }}</td>
+        <td>{{ h.balance_after }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p class="muted">No activity yet.</p>
+{% endif %}
+{% endblock %}

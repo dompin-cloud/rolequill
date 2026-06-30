@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Sign up — RoleQuill{% endblock %}
+{% block content %}
+<div class="auth-card">
+  <h2>Create your account</h2>
+  <form method="post">
+    <label>Full name<input type="text" name="full_name" placeholder="Used to title your Excel report"></label>
+    <label>Email<input type="email" name="email" required></label>
+    <label>Password<input type="password" name="password" required minlength="8" placeholder="At least 8 characters"></label>
+    <button class="btn" type="submit">Sign up</button>
+  </form>
+  <p class="muted">Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a></p>
+</div>
+{% endblock %}

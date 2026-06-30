@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — RoleQuill{% endblock %}
+{% block content %}
+<h2>Dashboard</h2>
+
+<div class="grid-2">
+  <section class="panel">
+    <h3>1 · Your resume</h3>
+    <form method="post" action="{{ url_for('main.upload_resume') }}" enctype="multipart/form-data">
+      <input type="file" name="resume" accept=".pdf,.docx,.txt" required>
+      <button class="btn" type="submit">Upload</button>
+    </form>
+    {% if resumes %}
+      <ul class="resume-list">
+        {% for r in resumes %}
+          <li><strong>{{ r.filename }}</strong>
+            <span class="muted">· {{ (r.skills|from_json)|length }} skills · {{ r.created_at }}</span></li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No resume yet. Upload a PDF, DOCX, or TXT to power matching & ATS scoring.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h3>2 · Run a search</h3>
+    <p class="src-status">
+      Sources: Greenhouse · Lever · Ashby ·
+      {% if google_on %}
+        <span class="on">Google Jobs ✓ on</span>
+      {% else %}
+        <span class="off">Google Jobs ✗ off</span> — add <code>SERPAPI_KEY</code> to <code>.env</code>
+      {% endif %}
+    </p>
+    <form method="post" action="{{ url_for('main.new_search') }}">
+      <label>Resume
+        <select name="resume_id">
+          <option value="">— none (skill-blind) —</option>
+          {% for r in resumes %}
+            <option value="{{ r.id }}" {% if loop.first %}selected{% endif %}>{{ r.filename }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Job title / keywords <span class="opt">(optional)</span>
+        <input type="text" name="title_query" placeholder="e.g. Implementation Engineer — or leave blank">
+      </label>
+      <p class="hint">Leave the title blank to match purely on your resume — Core Skills,
+        Education, and Professional Development drive the ranking.</p>
+      <div class="row">
+        <label>Min pay (annual $)
+          <input type="text" name="min_pay" placeholder="e.g. 110000">
+        </label>
+        <label>Location
+          <input type="text" name="location" placeholder="e.g. Remote / Austin TX">
+        </label>
+      </div>
+      <div class="row">
+        <label>Work type
+          <select name="work_type">
+            <option value="any">Any</option>
+            <option value="remote">Remote</option>
+            <option value="hybrid">Hybrid</option>
+            <option value="on-site">On-site</option>
+          </select>
+        </label>
+        <label>Languages you speak
+          <input type="text" name="languages" placeholder="e.g. English, Spanish">
+        </label>
+      </div>
+      <p class="hint">Tip: for remote, include a country (e.g. <em>Remote USA</em>) — postings
+        restricted to other regions will be filtered out.</p>
+      <button class="btn" type="submit">🚀 Run automated search</button>
+      <p class="cost-note">Uses 1 credit (🪶 {{ g.credits if g.credits is not none else 0 }} left).
+        Refunded automatically if no matches. <a href="{{ url_for('main.credits') }}">Get more</a></p>
+    </form>
+  </section>
+</div>
+
+<section class="panel">
+  <h3>Recent searches</h3>
+  {% if searches %}
+    <table class="tbl">
+      <thead><tr><th>When</th><th>Query</th><th>Status</th><th>Matches</th><th></th></tr></thead>
+      <tbody>
+      {% for s in searches %}
+        <tr>
+          <td>{{ s.created_at }}</td>
+          <td>{{ s.title_query or '(any)' }}{% if s.location %} · {{ s.location }}{% endif %}</td>
+          <td><span class="badge badge-{{ s.status }}">{{ s.status }}</span></td>
+          <td>{{ s.result_count }}</td>
+          <td><a href="{{ url_for('main.view_search', search_id=s.id) }}">Open</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No searches yet — run your first one above.</p>
+  {% endif %}
+</section>
+{% endblock %}

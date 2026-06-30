@@ -1,0 +1,37 @@
+# Render Blueprint for RoleQuill. In Render: New > Blueprint > pick your repo.
+# Render reads this, provisions the service + persistent disk, and prompts you to
+# enter the secret env vars (marked sync:false).
+services:
+  - type: web
+    name: rolequill
+    runtime: python
+    plan: starter            # required for a persistent disk (free tier is ephemeral)
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -w 2 --threads 8 --timeout 120 -b 0.0.0.0:$PORT wsgi:app
+    healthCheckPath: /auth/login
+    disk:
+      name: data
+      mountPath: /opt/render/project/src/data   # SQLite db + resumes + Excel exports
+      sizeGB: 1
+    envVars:
+      - key: ROLEQUILL_DEBUG
+        value: "0"
+      - key: ROLEQUILL_HTTPS
+        value: "1"
+      - key: ROLEQUILL_BEHIND_PROXY
+        value: "1"
+      - key: ROLEQUILL_PAYMENTS_MODE
+        value: stripe
+      - key: ROLEQUILL_GOOGLE_PAGES
+        value: "1"
+      # secrets — entered in the Render dashboard, never committed
+      - key: ROLEQUILL_SECRET
+        sync: false
+      - key: SERPAPI_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false

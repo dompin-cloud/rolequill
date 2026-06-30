@@ -1,0 +1,14 @@
+Flask>=3.0
+requests>=2.31
+openpyxl>=3.1
+python-docx>=1.1
+pypdf>=4.0
+# optional: only needed if you launch via `flask run` instead of `python run.py`.
+# RoleQuill loads .env itself, but this also lets the Flask CLI load it (silences
+# the "Install python-dotenv" tip).
+python-dotenv>=1.0
+
+# --- production ---
+stripe>=9.0                              # live payments (webhook + checkout)
+waitress>=3.0                            # cross-platform production WSGI server
+gunicorn>=21.0 ; sys_platform != "win32" # Linux production WSGI server (alt to waitress)

@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+data/jobsearch.db*
+data/resumes/*
+data/exports/*
+!data/resumes/.gitkeep
+!data/exports/.gitkeep
+.venv/
+env/
+.env
+.claude/
+*.xlsx
+~$*

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Search results — RoleQuill{% endblock %}
+{% block content %}
+<a class="muted" href="{{ url_for('main.dashboard') }}">← Dashboard</a>
+<h2>Search results</h2>
+<p class="muted">
+  {{ search.title_query or '(any title)' }}
+  {% if search.location %}· {{ search.location }}{% endif %}
+  {% if search.min_pay %}· ≥ ${{ '{:,}'.format(search.min_pay) }}{% endif %}
+  · {{ search.work_type }}
+  {% if search.languages %}· 🗣 {{ search.languages }}{% endif %}
+</p>
+
+<div id="status-box" class="status-box" data-status="{{ search.status }}">
+  <div class="spinner" {% if search.status in ('done','error') %}style="display:none"{% endif %}></div>
+  <span id="status-text">{{ search.progress or 'Queued…' }}</span>
+</div>
+
+<div id="results-area" {% if search.status != 'done' %}style="display:none"{% endif %}>
+  <div class="results-head">
+    <strong id="match-count">{{ jobs|length }}</strong> matches found.
+    <a class="btn" id="dl-btn" href="{{ url_for('main.download_search', search_id=search.id) }}">⬇ Download Excel report</a>
+  </div>
+  {% if jobs %}
+  <div class="table-wrap">
+    <table class="tbl jobs">
+      <thead><tr>
+        <th>Match</th><th>ATS</th><th>Role</th><th>Company</th><th>Location</th>
+        <th>Salary</th><th>Type</th><th>Why it matches</th><th>Missing</th><th></th>
+      </tr></thead>
+      <tbody>
+      {% for j in jobs %}
+        <tr>
+          <td class="score score-{{ 'hi' if j.match_score>=80 else ('mid' if j.match_score>=60 else 'lo') }}">{{ j.match_score }}</td>
+          <td class="ats">{{ j.ats_score }}</td>
+          <td><strong>{{ j.role }}</strong><div class="src">{{ j.source }}</div></td>
+          <td>{{ j.company }}</td>
+          <td>{{ j.location }}
+            {% if j.remote_scope %}<div class="rscope">📍 {{ j.remote_scope }}</div>{% endif %}
+          </td>
+          <td>{{ j.salary }}</td>
+          <td>{{ j.work_type or '—' }}</td>
+          <td class="why">{{ j.why_matches }}</td>
+          <td class="miss">{{ j.missing }}</td>
+          <td>{% if j.apply_link %}<a class="apply" href="{{ j.apply_link }}" target="_blank" rel="noopener">Apply ↗</a>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+
+<div id="empty-area" {% if not (search.status == 'done' and jobs|length == 0) %}style="display:none"{% endif %}>
+  <p class="muted">No qualifying matches. Try broadening the title, lowering min pay, or
+  adding more company tokens in <code>app/providers/companies.py</code>, then re-run.</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const SEARCH_ID = {{ search.id }};
+  const STATUS_URL = "{{ url_for('main.search_status', search_id=search.id) }}";
+  const initial = document.getElementById('status-box').dataset.status;
+  if (initial !== 'done' && initial !== 'error') {
+    const poll = setInterval(async () => {
+      try {
+        const r = await fetch(STATUS_URL);
+        const d = await r.json();
+        document.getElementById('status-text').textContent = d.progress || d.status;
+        if (d.status === 'done') {
+          clearInterval(poll);
+          location.reload();
+        } else if (d.status === 'error') {
+          clearInterval(poll);
+          document.querySelector('.spinner').style.display = 'none';
+          document.getElementById('status-text').textContent = 'Error: ' + (d.error || 'search failed');
+        }
+      } catch (e) { /* keep polling */ }
+    }, 2000);
+  }
+</script>
+{% endblock %}

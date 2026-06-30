@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>Your automated job search, on autopilot.</h1>
+  <p class="lead">
+    Upload your resume, set your target title, pay, and location — RoleQuill scans
+    every public ATS board, filters out ghost posts, scams, and stale listings,
+    scores each match against your resume with an ATS estimate, and hands you a
+    formatted Excel report with direct apply links.
+  </p>
+  <div class="cta">
+    <a class="btn" href="{{ url_for('auth.register') }}">Get started free</a>
+    <a class="btn btn-ghost" href="{{ url_for('auth.login') }}">Log in</a>
+  </div>
+</section>
+
+<section class="features">
+  <div class="card"><h3>🔎 Scans real boards</h3><p>Live postings from Greenhouse, Lever, and Ashby public feeds — no stale scraped data.</p></div>
+  <div class="card"><h3>🛡️ Filters the junk</h3><p>Ghost/evergreen reqs, scam signals, and long-stale listings are removed automatically.</p></div>
+  <div class="card"><h3>🎯 Match + ATS scores</h3><p>Each role scored against your resume keywords, with the gaps you'd need to close.</p></div>
+  <div class="card"><h3>📊 Excel deliverable</h3><p>A 6-tab workbook: listings, top matches, ATS keywords, skill gaps, strategy, summary.</p></div>
+</section>
+{% endblock %}
