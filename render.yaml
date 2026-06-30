@@ -7,7 +7,9 @@ services:
     runtime: python
     plan: starter            # required for a persistent disk (free tier is ephemeral)
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn -w 2 --threads 8 --timeout 120 -b 0.0.0.0:$PORT wsgi:app
+    # -w 1: one worker keeps memory low on the 512MB Starter instance (a search
+    # holds many job descriptions in RAM). Threads handle concurrent requests.
+    startCommand: gunicorn -w 1 --threads 8 --timeout 120 -b 0.0.0.0:$PORT wsgi:app
     healthCheckPath: /auth/login
     disk:
       name: data
@@ -24,6 +26,11 @@ services:
         value: stripe
       - key: ROLEQUILL_GOOGLE_PAGES
         value: "1"
+      # memory-bound the search on the 512MB instance (fewer boards, less parallelism)
+      - key: JOBSEARCH_MAX_COMPANIES
+        value: "25"
+      - key: JOBSEARCH_WORKERS
+        value: "6"
       # secrets — entered in the Render dashboard, never committed
       - key: ROLEQUILL_SECRET
         sync: false

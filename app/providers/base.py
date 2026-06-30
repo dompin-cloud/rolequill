@@ -96,12 +96,18 @@ class JobPosting:
     missing: str = ""
     flags: list = field(default_factory=list)
 
+    # cap stored JD text — keyword/skill/ATS matching only needs the early sections,
+    # and full JDs (some many KB each, thousands per search) blow up memory on small hosts
+    DESC_CAP = 5000
+
     def __post_init__(self):
         # safety net: never let a structured pay object reach the UI/Excel
         if not isinstance(self.salary, str):
             self.salary = format_pay(self.salary)
         elif self.salary.strip().startswith(("{", "[")):
             self.salary = format_pay(self.salary)
+        if self.description and len(self.description) > self.DESC_CAP:
+            self.description = self.description[:self.DESC_CAP]
 
     @property
     def age_days(self) -> Optional[float]:
