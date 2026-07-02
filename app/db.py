@@ -78,9 +78,28 @@ CREATE TABLE IF NOT EXISTS jobs (
     flags        TEXT              -- JSON: ghost/scam/closed reasons (kept ones only)
 );
 
+CREATE TABLE IF NOT EXISTS applications (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role        TEXT,
+    company     TEXT,
+    apply_link  TEXT,
+    source      TEXT,
+    match_score INTEGER,
+    salary      TEXT,
+    location    TEXT,
+    status      TEXT NOT NULL DEFAULT 'applied',  -- saved/applied/replied/interview/offer/rejected
+    applied_at  TEXT,
+    replied_at  TEXT,
+    notes       TEXT,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_jobs_search ON jobs(search_id);
 CREATE INDEX IF NOT EXISTS idx_searches_user ON searches(user_id);
 CREATE INDEX IF NOT EXISTS idx_resumes_user ON resumes(user_id);
+CREATE INDEX IF NOT EXISTS idx_app_user ON applications(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_app_user_link ON applications(user_id, apply_link);
 """
 
 

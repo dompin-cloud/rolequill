@@ -42,7 +42,13 @@
           <td>{{ j.work_type or '—' }}</td>
           <td class="why">{{ j.why_matches }}</td>
           <td class="miss">{{ j.missing }}</td>
-          <td>{% if j.apply_link %}<a class="apply" href="{{ j.apply_link }}" target="_blank" rel="noopener">Apply ↗</a>{% endif %}</td>
+          <td class="rowact">
+            {% if j.apply_link %}<a class="apply" href="{{ j.apply_link }}" target="_blank" rel="noopener">Apply ↗</a>{% endif %}
+            <form method="post" action="{{ url_for('main.add_application') }}">
+              <input type="hidden" name="job_id" value="{{ j.id }}">
+              <button class="track-btn" type="submit" title="Track this application">＋ Track</button>
+            </form>
+          </td>
         </tr>
       {% endfor %}
       </tbody>

@@ -28,6 +28,7 @@
            title="Search credits">🪶 {{ g.credits if g.credits is not none else 0 }}</a>
         <span class="who">{{ g.user.full_name or g.user.email }}</span>
         <a href="{{ url_for('main.dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('main.applications') }}">Applications</a>
         <a href="{{ url_for('auth.logout') }}">Log out</a>
       {% else %}
         <a href="{{ url_for('auth.login') }}">Log in</a>

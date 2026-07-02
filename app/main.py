@@ -17,6 +17,24 @@ from .search_runner import start_search
 
 bp = Blueprint("main", __name__)
 
+# application pipeline stages; anything past 'applied' means the company responded
+APP_STATUSES = ["saved", "applied", "replied", "interview", "offer", "rejected"]
+REPLY_STATUSES = {"replied", "interview", "offer", "rejected"}
+SENT_STATUSES = {"applied", "replied", "interview", "offer", "rejected"}
+
+
+def _application_stats(apps):
+    sent = sum(1 for a in apps if a["status"] in SENT_STATUSES)
+    replies = sum(1 for a in apps if a["status"] in REPLY_STATUSES)
+    return {
+        "total": len(apps),
+        "sent": sent,
+        "replies": replies,
+        "reply_rate": round(replies / sent * 100) if sent else 0,
+        "interview": sum(1 for a in apps if a["status"] == "interview"),
+        "offer": sum(1 for a in apps if a["status"] == "offer"),
+    }
+
 
 @bp.route("/")
 def index():
@@ -36,8 +54,10 @@ def dashboard():
         "SELECT * FROM searches WHERE user_id = ? ORDER BY created_at DESC LIMIT 25",
         (g.user["id"],)).fetchall()
     google_on = bool(current_app.config.get("SERPAPI_KEY"))
+    apps = db.execute("SELECT status FROM applications WHERE user_id = ?",
+                      (g.user["id"],)).fetchall()
     return render_template("dashboard.html", resumes=resumes, searches=searches,
-                           google_on=google_on)
+                           google_on=google_on, app_stats=_application_stats(apps))
 
 
 @bp.route("/resume/upload", methods=("POST",))
@@ -226,6 +246,72 @@ def stripe_webhook():
         current_app.logger.exception("Stripe webhook fulfillment failed")
         return "", 500
     return "", 200
+
+
+@bp.route("/applications")
+@login_required
+def applications():
+    db = get_db()
+    apps = db.execute(
+        "SELECT * FROM applications WHERE user_id = ? "
+        "ORDER BY COALESCE(applied_at, created_at) DESC", (g.user["id"],)).fetchall()
+    return render_template("applications.html", apps=apps,
+                           stats=_application_stats(apps), statuses=APP_STATUSES)
+
+
+@bp.route("/applications/add", methods=("POST",))
+@login_required
+def add_application():
+    db = get_db()
+    job = db.execute(
+        "SELECT j.* FROM jobs j JOIN searches s ON j.search_id = s.id "
+        "WHERE j.id = ? AND s.user_id = ?",
+        (request.form.get("job_id"), g.user["id"])).fetchone()
+    if not job:
+        abort(404)
+    cur = db.execute(
+        "INSERT OR IGNORE INTO applications (user_id, role, company, apply_link, "
+        "source, match_score, salary, location, status, applied_at) "
+        "VALUES (?,?,?,?,?,?,?,?, 'applied', datetime('now'))",
+        (g.user["id"], job["role"], job["company"], job["apply_link"], job["source"],
+         job["match_score"], job["salary"], job["location"]))
+    db.commit()
+    flash("Marked as applied — track replies on your Applications page."
+          if cur.rowcount else "Already in your applications.", "success")
+    return redirect(request.referrer or url_for("main.applications"))
+
+
+@bp.route("/applications/<int:app_id>/status", methods=("POST",))
+@login_required
+def update_application(app_id):
+    db = get_db()
+    app = db.execute("SELECT * FROM applications WHERE id = ? AND user_id = ?",
+                     (app_id, g.user["id"])).fetchone()
+    if not app:
+        abort(404)
+    new = request.form.get("status")
+    if new not in APP_STATUSES:
+        abort(400)
+    # stamp applied_at once it's sent, replied_at the first time a reply lands
+    set_replied = new in REPLY_STATUSES and not app["replied_at"]
+    db.execute(
+        "UPDATE applications SET status = ?, "
+        "applied_at = COALESCE(applied_at, CASE WHEN ? != 'saved' THEN datetime('now') END), "
+        "replied_at = CASE WHEN ? THEN datetime('now') ELSE replied_at END "
+        "WHERE id = ?",
+        (new, new, 1 if set_replied else 0, app_id))
+    db.commit()
+    return redirect(url_for("main.applications"))
+
+
+@bp.route("/applications/<int:app_id>/delete", methods=("POST",))
+@login_required
+def delete_application(app_id):
+    db = get_db()
+    db.execute("DELETE FROM applications WHERE id = ? AND user_id = ?",
+               (app_id, g.user["id"]))
+    db.commit()
+    return redirect(url_for("main.applications"))
 
 
 def _owned_search(search_id):

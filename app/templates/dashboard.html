@@ -3,6 +3,15 @@
 {% block content %}
 <h2>Dashboard</h2>
 
+{% if app_stats.total %}
+<p class="src-status">
+  📮 <a href="{{ url_for('main.applications') }}">Applications</a>:
+  {{ app_stats.sent }} sent · {{ app_stats.replies }} replies ·
+  <strong>{{ app_stats.reply_rate }}% reply rate</strong>
+  {% if app_stats.interview %} · {{ app_stats.interview }} interview(s){% endif %}
+</p>
+{% endif %}
+
 <div class="grid-2">
   <section class="panel">
     <h3>1 · Your resume</h3>

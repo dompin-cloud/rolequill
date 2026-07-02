@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Applications — RoleQuill{% endblock %}
+{% block content %}
+<h2>Applications</h2>
+<p class="muted">Mark jobs as applied, then update each as replies come in. Your reply
+rate updates automatically.</p>
+
+<div class="stat-row">
+  <div class="stat stat-hero">
+    <div class="stat-num">{{ stats.reply_rate }}%</div>
+    <div class="stat-label">Reply rate</div>
+  </div>
+  <div class="stat"><div class="stat-num">{{ stats.sent }}</div><div class="stat-label">Applications sent</div></div>
+  <div class="stat"><div class="stat-num">{{ stats.replies }}</div><div class="stat-label">Replies</div></div>
+  <div class="stat"><div class="stat-num">{{ stats.interview }}</div><div class="stat-label">Interviews</div></div>
+  <div class="stat"><div class="stat-num">{{ stats.offer }}</div><div class="stat-label">Offers</div></div>
+</div>
+
+{% if apps %}
+<div class="table-wrap">
+  <table class="tbl apps-tbl">
+    <thead><tr>
+      <th>Role</th><th>Company</th><th>Source</th><th>Applied</th><th>Status</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for a in apps %}
+      <tr>
+        <td>
+          <strong>{{ a.role }}</strong>
+          {% if a.apply_link %}<div class="src"><a href="{{ a.apply_link }}" target="_blank" rel="noopener">apply link ↗</a></div>{% endif %}
+        </td>
+        <td>{{ a.company }}</td>
+        <td>{{ a.source }}</td>
+        <td class="nowrap">{{ (a.applied_at or a.created_at)[:10] }}</td>
+        <td>
+          <form method="post" action="{{ url_for('main.update_application', app_id=a.id) }}">
+            <select name="status" onchange="this.form.submit()" class="status-sel status-{{ a.status }}">
+              {% for s in statuses %}
+                <option value="{{ s }}" {% if s == a.status %}selected{% endif %}>{{ s|capitalize }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('main.delete_application', app_id=a.id) }}"
+                onsubmit="return confirm('Remove this application?');">
+            <button class="link-btn" type="submit" title="Remove">✕</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="muted">No applications yet. Run a search, then click <strong>＋ Track</strong>
+on any result to start tracking it here.</p>
+<a class="btn" href="{{ url_for('main.dashboard') }}">Run a search</a>
+{% endif %}
+{% endblock %}
