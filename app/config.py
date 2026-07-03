@@ -78,6 +78,9 @@ class Config:
     SERPAPI_KEY = os.environ.get("SERPAPI_KEY") or os.environ.get("SERPAPI_API_KEY")
     GOOGLE_JOBS_PAGES = int(os.environ.get("ROLEQUILL_GOOGLE_PAGES", "1"))
 
+    # Owner-only admin dashboard — the account with this email sees /admin
+    ADMIN_EMAIL = (os.environ.get("ROLEQUILL_ADMIN_EMAIL") or "").strip().lower()
+
     # Payments / credits — 'stub' (instant test fulfillment) or 'stripe' (live)
     PAYMENTS_MODE = os.environ.get("ROLEQUILL_PAYMENTS_MODE", "stub")
     STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY")

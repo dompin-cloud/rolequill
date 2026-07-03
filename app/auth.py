@@ -4,6 +4,7 @@ import functools
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for,
 )
+from flask import current_app
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from . import credits
@@ -18,11 +19,15 @@ def load_logged_in_user():
     if user_id is None:
         g.user = None
         g.credits = None
+        g.is_admin = False
         return
     db = get_db()
     credits.ensure_weekly_refill(db, user_id)
     g.user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     g.credits = credits.balance(db, user_id)["total"] if g.user else None
+    admin_email = current_app.config.get("ADMIN_EMAIL")
+    g.is_admin = bool(g.user and admin_email
+                      and g.user["email"].strip().lower() == admin_email)
 
 
 def login_required(view):

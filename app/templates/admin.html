@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Admin — RoleQuill{% endblock %}
+{% block content %}
+<h2>Admin metrics</h2>
+<p class="muted">Owner-only overview of platform activity.</p>
+
+<h3>Users & activity</h3>
+<div class="stat-row">
+  <div class="stat"><div class="stat-num">{{ m.users }}</div><div class="stat-label">Users ({{ m.users_7d }} new / 7d)</div></div>
+  <div class="stat"><div class="stat-num">{{ m.resumes }}</div><div class="stat-label">Resumes uploaded</div></div>
+  <div class="stat"><div class="stat-num">{{ m.searches }}</div><div class="stat-label">Searches ({{ m.searches_7d }} / 7d)</div></div>
+  <div class="stat"><div class="stat-num">{{ m.searches_done }}</div><div class="stat-label">Completed searches</div></div>
+</div>
+
+<h3>Revenue & credits</h3>
+<div class="stat-row">
+  <div class="stat stat-hero"><div class="stat-num">${{ m.revenue }}</div><div class="stat-label">Est. revenue (live)</div></div>
+  <div class="stat"><div class="stat-num">{{ m.purchase_count }}</div><div class="stat-label">Paid purchases</div></div>
+  <div class="stat"><div class="stat-num">{{ m.credits_sold }}</div><div class="stat-label">Credits sold</div></div>
+  <div class="stat"><div class="stat-num">{{ m.credits_spent }}</div><div class="stat-label">Credits spent</div></div>
+  <div class="stat"><div class="stat-num">{{ m.free_out + m.paid_out }}</div><div class="stat-label">Credits outstanding</div></div>
+  <div class="stat"><div class="stat-num">{{ m.refunds }}</div><div class="stat-label">Refunds issued</div></div>
+</div>
+<p class="muted">Revenue estimated from non-test credit-pack purchases (Starter $5 / Plus $12 / Pro $25).
+{% if m.test_purchases %} Excludes {{ m.test_purchases }} test-mode purchase(s).{% endif %}</p>
+
+<h3>Engagement</h3>
+<div class="stat-row">
+  <div class="stat"><div class="stat-num">{{ m.applications }}</div><div class="stat-label">Applications tracked</div></div>
+  <div class="stat"><div class="stat-num">{{ m.reply_rate }}%</div><div class="stat-label">Aggregate reply rate</div></div>
+</div>
+
+<div class="grid-2">
+  <section class="panel">
+    <h3>Searches by status</h3>
+    <table class="tbl">
+      <thead><tr><th>Status</th><th>Count</th></tr></thead>
+      <tbody>
+        {% for r in by_status %}<tr><td><span class="badge badge-{{ r.status }}">{{ r.status }}</span></td><td>{{ r.c }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h3>Newest users</h3>
+    <table class="tbl">
+      <thead><tr><th>Email</th><th>Joined</th><th>🪶</th></tr></thead>
+      <tbody>
+        {% for u in recent_users %}
+          <tr><td>{{ u.email }}</td><td class="nowrap">{{ u.created_at[:10] }}</td><td>{{ u.free_credits + u.paid_credits }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<section class="panel">
+  <h3>Recent searches</h3>
+  <table class="tbl">
+    <thead><tr><th>When</th><th>User</th><th>Query</th><th>Status</th><th>Matches</th></tr></thead>
+    <tbody>
+      {% for s in recent_searches %}
+        <tr>
+          <td class="nowrap">{{ s.created_at[:16] }}</td>
+          <td>{{ s.email }}</td>
+          <td>{{ s.title_query or '(skills-first)' }}</td>
+          <td><span class="badge badge-{{ s.status }}">{{ s.status }}</span></td>
+          <td>{{ s.result_count }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
