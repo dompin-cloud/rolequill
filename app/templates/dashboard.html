@@ -35,10 +35,12 @@
     <h3>2 · Run a search</h3>
     <p class="src-status">
       Sources: Greenhouse · Lever · Ashby ·
-      {% if google_on %}
-        <span class="on">Google Jobs ✓ on</span>
-      {% else %}
-        <span class="off">Google Jobs ✗ off</span> — add <code>SERPAPI_KEY</code> to <code>.env</code>
+      {% if google_on %}<span class="on">Google Jobs ✓</span>{% else %}<span class="off">Google Jobs ✗</span>{% endif %} ·
+      {% if jsearch_on %}<span class="on">JSearch (LinkedIn/Indeed/ZipRecruiter) ✓</span>{% else %}<span class="off">JSearch ✗</span>{% endif %}
+      {% if not google_on or not jsearch_on %}
+        <br><span class="muted">Off sources need their key set
+        {% if not google_on %}(<code>SERPAPI_KEY</code>){% endif %}
+        {% if not jsearch_on %}(<code>JSEARCH_KEY</code>){% endif %} in the host environment.</span>
       {% endif %}
     </p>
     <form method="post" action="{{ url_for('main.new_search') }}">

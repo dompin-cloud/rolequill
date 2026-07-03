@@ -63,10 +63,12 @@ def dashboard():
         "SELECT * FROM searches WHERE user_id = ? ORDER BY created_at DESC LIMIT 25",
         (g.user["id"],)).fetchall()
     google_on = bool(current_app.config.get("SERPAPI_KEY"))
+    jsearch_on = bool(current_app.config.get("JSEARCH_KEY"))
     apps = db.execute("SELECT status FROM applications WHERE user_id = ?",
                       (g.user["id"],)).fetchall()
     return render_template("dashboard.html", resumes=resumes, searches=searches,
-                           google_on=google_on, app_stats=_application_stats(apps))
+                           google_on=google_on, jsearch_on=jsearch_on,
+                           app_stats=_application_stats(apps))
 
 
 @bp.route("/resume/upload", methods=("POST",))
