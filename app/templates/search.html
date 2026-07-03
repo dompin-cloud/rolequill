@@ -23,6 +23,10 @@
     <a class="btn btn-ghost" id="dl-btn" href="{{ url_for('main.download_search', search_id=search.id) }}">⬇ Download Excel</a>
   </div>
   {% if jobs %}
+  <details class="tips-box">
+    <summary>💡 How to track these applications</summary>
+    {% include "_tracking_tips.html" %}
+  </details>
   <div class="table-wrap">
     <table class="tbl jobs">
       <thead><tr>
@@ -55,10 +59,6 @@
       </tbody>
     </table>
   </div>
-  <details class="tips-box">
-    <summary>💡 How to track these applications</summary>
-    {% include "_tracking_tips.html" %}
-  </details>
   {% endif %}
 </div>
 

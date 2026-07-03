@@ -93,6 +93,8 @@ def fetch_query_sources(query, location="", *, serpapi_key=None, pages=1,
     try:
         results = gj.search(query, location)
         status = f"ok — {len(results)} postings for '{query}'"
+    except requests.exceptions.Timeout:
+        results, status = [], "timed out — Google was slow this run (other sources still used)"
     except Exception as e:  # noqa: BLE001
         results, status = [], f"error: {e}"
     if progress:
@@ -116,6 +118,8 @@ def fetch_jsearch_source(query, *, jsearch_key=None, pages=1, country=None,
     try:
         results = jp.search(query, country=country, remote_only=remote_only)
         status = f"ok — {len(results)} postings"
+    except requests.exceptions.Timeout:
+        results, status = [], "timed out — the provider was slow (other sources still used)"
     except Exception as e:  # noqa: BLE001
         results, status = [], f"error: {e}"
     if progress:

@@ -79,7 +79,11 @@ class Config:
     # How many companies to fan out to per provider per search (keeps runtime sane)
     MAX_COMPANIES_PER_PROVIDER = _int_env("JOBSEARCH_MAX_COMPANIES", 60)
     FETCH_WORKERS = _int_env("JOBSEARCH_WORKERS", 16)
-    FETCH_TIMEOUT = 12  # seconds per HTTP call
+    FETCH_TIMEOUT = 12  # seconds per per-company ATS call (many, fanned out in parallel)
+    # Query aggregators (SerpApi Google Jobs, JSearch) are a single live search that can
+    # legitimately take longer than one ATS board — give them a bigger ceiling so they
+    # aren't cut off (SerpApi's google_jobs engine often takes 10-20s).
+    QUERY_TIMEOUT = _int_env("ROLEQUILL_QUERY_TIMEOUT", 30)
     # overall wall-clock limit per search; exceeding it cancels + refunds the credit
     SEARCH_TIME_LIMIT = _int_env("ROLEQUILL_SEARCH_TIMEOUT", 120)
 

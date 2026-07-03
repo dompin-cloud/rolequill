@@ -65,6 +65,7 @@ def _run(app, search_id):
             max_per_provider=cfg["MAX_COMPANIES_PER_PROVIDER"],
             workers=cfg["FETCH_WORKERS"],
             timeout=cfg["FETCH_TIMEOUT"],
+            query_timeout=cfg.get("QUERY_TIMEOUT", 30),
             progress=progress,
             profile_terms=profile_terms,
             serpapi_key=cfg.get("SERPAPI_KEY"),

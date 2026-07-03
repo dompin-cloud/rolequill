@@ -42,11 +42,14 @@ def dedup_key(job):
 
 
 def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
-               timeout, progress=None, profile_terms=(), serpapi_key=None,
-               google_pages=1, jsearch_key=None, jsearch_pages=1, time_limit=None):
+               timeout, query_timeout=None, progress=None, profile_terms=(),
+               serpapi_key=None, google_pages=1, jsearch_key=None, jsearch_pages=1,
+               time_limit=None):
     """criteria: title_query, location, min_pay, work_type, languages.
     Returns (ranked_jobs, stats). Raises SearchTimeout if it exceeds time_limit secs."""
     deadline = (time.monotonic() + time_limit) if time_limit else None
+    # query aggregators get a larger per-call ceiling than the per-board ATS calls
+    query_timeout = query_timeout or timeout
     resume_skills = set(resume_skills or [])
     profile_terms = list(profile_terms or [])
     title_query = criteria.get("title_query") or ""
@@ -71,15 +74,15 @@ def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
         google_q = f"{google_q} {work_type}"
     google, google_status = fetch_query_sources(
         google_q, "", serpapi_key=serpapi_key, pages=google_pages,
-        timeout=timeout, progress=progress, deadline=deadline)
+        timeout=query_timeout, progress=progress, deadline=deadline)
     raw.extend(google)
 
     # JSearch (LinkedIn / Indeed / ZipRecruiter …) — same query, geo/remote hints
     jsearch, jsearch_status = fetch_jsearch_source(
         google_q, jsearch_key=jsearch_key, pages=jsearch_pages,
         country=("us" if "US" in desired_geo else None),
-        remote_only=(work_type == "remote"), timeout=timeout, progress=progress,
-        deadline=deadline)
+        remote_only=(work_type == "remote"), timeout=query_timeout,
+        progress=progress, deadline=deadline)
     raw.extend(jsearch)
 
     stats = {"raw": len(raw), "from_google": len(google),
