@@ -269,46 +269,32 @@ def admin():
     def scalar(q, *a):
         return db.execute(q, a).fetchone()[0]
 
-    price_by_credits = {p["credits"]: p["price_usd"] for p in payments.PACKS.values()}
-    purchases = db.execute(
-        "SELECT delta, note FROM credit_ledger WHERE kind = 'purchase'").fetchall()
-    real = [p for p in purchases if "test" not in (p["note"] or "").lower()]
-
     app_rows = db.execute("SELECT status FROM applications").fetchall()
+    searches_done = scalar("SELECT COUNT(*) FROM searches WHERE status='done'")
+    total_matches = scalar("SELECT COALESCE(SUM(result_count),0) FROM searches "
+                           "WHERE status='done'")
 
     m = {
         "users": scalar("SELECT COUNT(*) FROM users"),
         "users_7d": scalar("SELECT COUNT(*) FROM users "
                            "WHERE created_at >= datetime('now','-7 days')"),
-        "searches": scalar("SELECT COUNT(*) FROM searches"),
-        "searches_7d": scalar("SELECT COUNT(*) FROM searches "
-                             "WHERE created_at >= datetime('now','-7 days')"),
-        "searches_done": scalar("SELECT COUNT(*) FROM searches WHERE status='done'"),
-        "resumes": scalar("SELECT COUNT(*) FROM resumes"),
-        "free_out": scalar("SELECT COALESCE(SUM(free_credits),0) FROM users"),
-        "paid_out": scalar("SELECT COALESCE(SUM(paid_credits),0) FROM users"),
-        "credits_spent": scalar("SELECT COALESCE(-SUM(delta),0) FROM credit_ledger "
-                               "WHERE kind='search'"),
-        "refunds": scalar("SELECT COUNT(*) FROM credit_ledger WHERE kind='refund'"),
-        "purchase_count": len(real),
-        "credits_sold": sum(p["delta"] for p in real),
-        "revenue": sum(price_by_credits.get(p["delta"], 0) for p in real),
-        "test_purchases": len(purchases) - len(real),
         "applications": len(app_rows),
         "reply_rate": _application_stats(app_rows)["reply_rate"],
+        "searches_done": searches_done,
+        "total_matches": total_matches,
+        "avg_matches": round(total_matches / searches_done, 1) if searches_done else 0,
     }
-    by_status = db.execute(
-        "SELECT status, COUNT(*) c FROM searches GROUP BY status "
-        "ORDER BY c DESC").fetchall()
     recent_users = db.execute(
-        "SELECT email, full_name, created_at, free_credits, paid_credits "
-        "FROM users ORDER BY id DESC LIMIT 10").fetchall()
+        "SELECT u.email, u.created_at, "
+        "(SELECT COUNT(*) FROM searches s WHERE s.user_id=u.id) AS searches, "
+        "(SELECT COUNT(*) FROM applications a WHERE a.user_id=u.id) AS apps "
+        "FROM users u ORDER BY u.id DESC LIMIT 15").fetchall()
     recent_searches = db.execute(
         "SELECT s.title_query, s.status, s.result_count, s.created_at, u.email "
         "FROM searches s JOIN users u ON s.user_id = u.id "
         "ORDER BY s.id DESC LIMIT 12").fetchall()
-    return render_template("admin.html", m=m, by_status=by_status,
-                           recent_users=recent_users, recent_searches=recent_searches)
+    return render_template("admin.html", m=m, recent_users=recent_users,
+                           recent_searches=recent_searches)
 
 
 @bp.route("/applications")
