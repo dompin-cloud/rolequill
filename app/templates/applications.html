@@ -16,6 +16,11 @@ rate updates automatically.</p>
   <div class="stat"><div class="stat-num">{{ stats.offer }}</div><div class="stat-label">Offers</div></div>
 </div>
 
+<details class="tips-box">
+  <summary>💡 Tips for tracking applications</summary>
+  {% include "_tracking_tips.html" %}
+</details>
+
 {% if apps %}
 <div class="table-wrap">
   <table class="tbl apps-tbl">
@@ -53,8 +58,12 @@ rate updates automatically.</p>
   </table>
 </div>
 {% else %}
-<p class="muted">No applications yet. Run a search, then click <strong>＋ Track</strong>
-on any result to start tracking it here.</p>
-<a class="btn" href="{{ url_for('main.dashboard') }}">Run a search</a>
+<div class="panel">
+  <h3>No applications yet</h3>
+  <p class="muted">Run a search, then click <strong>＋ Track</strong> on any result to
+    start tracking it here. Here's how to make the most of it:</p>
+  {% include "_tracking_tips.html" %}
+  <a class="btn" href="{{ url_for('main.dashboard') }}">Run a search</a>
+</div>
 {% endif %}
 {% endblock %}
