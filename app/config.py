@@ -45,6 +45,16 @@ DOTENV_PATH = BASE_DIR / ".env"
 DOTENV_LOADED = _load_dotenv(DOTENV_PATH)
 
 
+def _int_env(name, default):
+    """Parse an int env var, falling back to default on missing/blank/bad values
+    so a mistyped setting can never crash the app at startup."""
+    raw = os.environ.get(name)
+    try:
+        return int(raw) if raw not in (None, "") else default
+    except (ValueError, TypeError):
+        return default
+
+
 _HTTPS = os.environ.get("ROLEQUILL_HTTPS", "0") == "1"
 
 
@@ -67,20 +77,20 @@ class Config:
     MAX_CONTENT_LENGTH = 8 * 1024 * 1024  # 8 MB resume cap
     ALLOWED_RESUME_EXT = {".pdf", ".docx", ".txt"}
     # How many companies to fan out to per provider per search (keeps runtime sane)
-    MAX_COMPANIES_PER_PROVIDER = int(os.environ.get("JOBSEARCH_MAX_COMPANIES", "60"))
-    FETCH_WORKERS = int(os.environ.get("JOBSEARCH_WORKERS", "16"))
+    MAX_COMPANIES_PER_PROVIDER = _int_env("JOBSEARCH_MAX_COMPANIES", 60)
+    FETCH_WORKERS = _int_env("JOBSEARCH_WORKERS", 16)
     FETCH_TIMEOUT = 12  # seconds per HTTP call
     # overall wall-clock limit per search; exceeding it cancels + refunds the credit
-    SEARCH_TIME_LIMIT = int(os.environ.get("ROLEQUILL_SEARCH_TIMEOUT", "120"))
+    SEARCH_TIME_LIMIT = _int_env("ROLEQUILL_SEARCH_TIMEOUT", 120)
 
     # Google Jobs via SerpApi (optional; disabled until a key is set).
     # Accept either common env var name.
     SERPAPI_KEY = os.environ.get("SERPAPI_KEY") or os.environ.get("SERPAPI_API_KEY")
-    GOOGLE_JOBS_PAGES = int(os.environ.get("ROLEQUILL_GOOGLE_PAGES", "1"))
+    GOOGLE_JOBS_PAGES = _int_env("ROLEQUILL_GOOGLE_PAGES", 1)
 
     # JSearch via RapidAPI — LinkedIn/Indeed/ZipRecruiter (optional; off until keyed)
     JSEARCH_KEY = os.environ.get("JSEARCH_KEY") or os.environ.get("RAPIDAPI_KEY")
-    JSEARCH_PAGES = int(os.environ.get("ROLEQUILL_JSEARCH_PAGES", "1"))
+    JSEARCH_PAGES = _int_env("ROLEQUILL_JSEARCH_PAGES", 1)
 
     # Owner-only admin dashboard — the account with this email sees /admin
     ADMIN_EMAIL = (os.environ.get("ROLEQUILL_ADMIN_EMAIL") or "").strip().lower()
