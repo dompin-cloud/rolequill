@@ -95,6 +95,12 @@ class Config:
     # Owner-only admin dashboard — the account with this email sees /admin
     ADMIN_EMAIL = (os.environ.get("ROLEQUILL_ADMIN_EMAIL") or "").strip().lower()
 
+    # Transactional email via Resend (optional; password reset is disabled until set).
+    # Verify rolequill.com in Resend and add its SPF/DKIM records in Cloudflare so mail
+    # doesn't land in spam. RESEND_FROM must use a verified domain.
+    RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
+    RESEND_FROM = os.environ.get("RESEND_FROM") or "RoleQuill <noreply@rolequill.com>"
+
     # Payments / credits — 'stub' (instant test fulfillment) or 'stripe' (live)
     PAYMENTS_MODE = os.environ.get("ROLEQUILL_PAYMENTS_MODE", "stub")
     STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY")

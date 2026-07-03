@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+<body style="margin:0;background:#f5f7fb;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1c2733;">
+  <div style="max-width:520px;margin:0 auto;padding:32px 24px;">
+    <h2 style="color:#1F3864;margin:0 0 16px;">Reset your RoleQuill password</h2>
+    <p>Hi{% if name %} {{ name }}{% endif %},</p>
+    <p>We received a request to reset the password for your RoleQuill account. Click the
+      button below to choose a new one. This link expires in <strong>1 hour</strong>.</p>
+    <p style="margin:26px 0;">
+      <a href="{{ link }}"
+         style="display:inline-block;background:#2E75B6;color:#fff;text-decoration:none;
+                padding:12px 22px;border-radius:8px;font-weight:600;">Reset password</a>
+    </p>
+    <p style="color:#6b7785;font-size:13px;">If the button doesn't work, copy and paste
+      this link into your browser:<br>
+      <a href="{{ link }}" style="color:#2E75B6;word-break:break-all;">{{ link }}</a></p>
+    <p style="color:#6b7785;font-size:13px;">If you didn't request this, you can safely
+      ignore this email — your password won't change.</p>
+    <hr style="border:none;border-top:1px solid #e3e8ef;margin:24px 0;">
+    <p style="color:#6b7785;font-size:12px;">RoleQuill · automated job search</p>
+  </div>
+</body>
+</html>

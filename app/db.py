@@ -96,7 +96,17 @@ CREATE TABLE IF NOT EXISTS applications (
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS password_resets (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,          -- SHA-256 of the token; raw token only in the email link
+    expires_at TEXT NOT NULL,                 -- ISO8601 UTC
+    used_at    TEXT,                          -- set once redeemed (single-use)
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_jobs_search ON jobs(search_id);
+CREATE INDEX IF NOT EXISTS idx_pwreset_user ON password_resets(user_id);
 CREATE INDEX IF NOT EXISTS idx_searches_user ON searches(user_id);
 CREATE INDEX IF NOT EXISTS idx_resumes_user ON resumes(user_id);
 CREATE INDEX IF NOT EXISTS idx_app_user ON applications(user_id);

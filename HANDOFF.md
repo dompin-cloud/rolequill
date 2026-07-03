@@ -45,6 +45,17 @@ Title is **optional** (blank = skills-first).
 
 ## Features live
 - Accounts (register/login, hashed pw), resume upload (PDF/DOCX/TXT) + parsing
+- **Login rate-limiting** (`app/ratelimit.py`): in-process sliding window, shared across
+  the worker's threads via a lock. Locks a (ip,email) pair after 5 failures and an ip
+  after 20 (spray) for 15 min. **Assumes `gunicorn -w 1`** (counters are in-memory, reset
+  on restart); move to SQLite/Redis if going multi-worker. Uses `request.remote_addr`
+  (accurate because ProxyFix is on behind Cloudflare).
+- **Password reset** (`auth.py` `/forgot` + `/reset/<token>`): single-use tokens in the
+  `password_resets` table (stores SHA-256 of the token; raw token only in the email link),
+  1-hour expiry, invalidated on use. No account enumeration (identical response whether or
+  not the email exists). Reset requests are rate-limited (5/IP). Email sent via
+  **Resend** (`app/mailer.py`, HTTPS API over `requests` — no new deps); body in
+  `templates/email/reset.html`. Disabled gracefully if `RESEND_API_KEY` unset.
 - **Credits** (`credits.py`): freemium + pay-as-you-go. 3 free on signup, +1/week
   (cap 2), purchased never expire. Auto-refund on: 0 results, 120s timeout, and
   restart-orphaned searches (startup `reconcile_orphans`). Packs: Starter 5/$5,
@@ -79,6 +90,8 @@ Title is **optional** (blank = skills-first).
 (live), `STRIPE_WEBHOOK_SECRET`, `SERPAPI_KEY`, `JSEARCH_KEY`,
 `JOBSEARCH_MAX_COMPANIES` (currently 25), `JOBSEARCH_WORKERS=6`, `ROLEQUILL_ADMIN_EMAIL`,
 optional `ROLEQUILL_GOOGLE_PAGES`/`ROLEQUILL_JSEARCH_PAGES` (default 1).
+**Email (password reset):** `RESEND_API_KEY`, optional `RESEND_FROM` (default
+`RoleQuill <noreply@rolequill.com>`; must use a Resend-verified domain).
 Numeric env vars are parsed with `_int_env` (blank/bad value → default, never crashes).
 
 ## Hard-won gotchas
@@ -97,14 +110,17 @@ Numeric env vars are parsed with `_int_env` (blank/bad value → default, never 
   lists in `companies.py`.
 - **Security housekeeping:** a Stripe `rk_live_` key and the JSearch key were pasted in
   chat during setup — optional to rotate them.
-- **Security housekeeping (next):** no **login rate-limiting** yet (brute-force gap);
-  still worth rotating the keys pasted in chat during setup.
+- **Email setup (to finish password reset in prod):** create a Resend key, verify
+  rolequill.com, and add the SPF/DKIM records in Cloudflare; set `RESEND_API_KEY` (and
+  optionally `RESEND_FROM`) in the Render dashboard. Until then reset links won't send.
+- **Security housekeeping:** rotate the keys pasted in chat during setup (user handling).
 - **Legal review:** privacy/terms are self-drafted templates — have a professional
   review if operating at scale or serving EU/UK users.
-- **Future ideas:** password reset flow; SQLite→Postgres + task queue at scale;
-  email-forward assist for auto reply-tracking; per-source reply-rate on admin.
+- **Future ideas:** SQLite→Postgres + task queue at scale; email-forward assist for
+  auto reply-tracking; per-source reply-rate on admin.
 
 ## Recent commit trail (newest first)
+login rate-limit + password reset (Resend email, single-use tokens) →
 privacy/data-control (policy+terms, account export/delete, resume delete, consent) →
 env-parse crash fix → pin deps + loosen python → JSearch indicator → JSearch v5
 /search-v2 → JSearch provider → cross-source dedupe → admin initials (PII) → admin
