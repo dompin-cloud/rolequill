@@ -98,8 +98,11 @@ class Config:
     # Transactional email via Resend (optional; password reset is disabled until set).
     # Verify rolequill.com in Resend and add its SPF/DKIM records in Cloudflare so mail
     # doesn't land in spam. RESEND_FROM must use a verified domain.
-    RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
-    RESEND_FROM = os.environ.get("RESEND_FROM") or "RoleQuill <noreply@rolequill.com>"
+    # Strip whitespace/surrounding quotes so a dashboard value pasted as
+    # "RoleQuill <noreply@rolequill.com>" (quotes included) doesn't 422 at Resend.
+    RESEND_API_KEY = (os.environ.get("RESEND_API_KEY") or "").strip() or None
+    RESEND_FROM = ((os.environ.get("RESEND_FROM") or "").strip().strip('"').strip("'").strip()
+                   or "RoleQuill <noreply@rolequill.com>")
 
     # Payments / credits — 'stub' (instant test fulfillment) or 'stripe' (live)
     PAYMENTS_MODE = os.environ.get("ROLEQUILL_PAYMENTS_MODE", "stub")

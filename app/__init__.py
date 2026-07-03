@@ -38,6 +38,10 @@ def create_app(config_object=Config):
     print(f"[RoleQuill] .env: {env_state}")
     print(f"[RoleQuill] Database: {app.config.get('DATABASE')}")
     print(f"[RoleQuill] Google Jobs: {gj} | Payments: {pay}")
+    if app.config.get("RESEND_API_KEY"):
+        print(f"[RoleQuill] Email (Resend): ENABLED | from {app.config.get('RESEND_FROM')!r}")
+    else:
+        print("[RoleQuill] Email (Resend): disabled (no RESEND_API_KEY) — password reset off")
 
     # production safety warnings
     if not app.config.get("DEBUG"):
