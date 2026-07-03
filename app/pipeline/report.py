@@ -89,6 +89,7 @@ def build_report(jobs, resume_skills, profile, stats, criteria):
         "dropped_worktype": stats.get("dropped_worktype", 0),
         "dropped_location": stats.get("dropped_location", 0),
         "dropped_relevance": stats.get("dropped_relevance", 0),
+        "dropped_duplicate": stats.get("dropped_duplicate", 0),
         "from_google": stats.get("from_google", 0),
         "google_status": stats.get("google_status", ""),
         "top_companies": [c for c, _ in companies.most_common(5)],

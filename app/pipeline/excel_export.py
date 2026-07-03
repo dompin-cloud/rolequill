@@ -370,6 +370,7 @@ def _sheet_summary(ws, jobs, resume_skills, stats, search_date):
     rows = [
         ("Total Qualifying Jobs Found", f"{len(jobs)} active postings after filtering"),
         ("Raw Postings Scanned", f"{stats.get('raw', 0)} across Greenhouse, Lever, Ashby"),
+        ("Filtered Out (duplicates)", str(stats.get("dropped_duplicate", 0))),
         ("Filtered Out (ghost/scam/stale)", str(stats.get("dropped_quality", 0))),
         ("Filtered Out (work type)", str(stats.get("dropped_worktype", 0))),
         ("Filtered Out (location mismatch)", str(stats.get("dropped_location", 0))),

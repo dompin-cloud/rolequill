@@ -1,4 +1,5 @@
 """End-to-end search pipeline: fetch -> filter -> score -> rank."""
+import re
 import time
 
 from . import geo, lang
@@ -11,6 +12,33 @@ RESULT_LIMIT = 40
 MATCH_FLOOR = 45          # drop weak matches below this score
 MIN_TITLE_OVERLAP = 0.34  # when a title query is given, require some token overlap
 SKILL_FLOOR = 2           # with no title, require >=N resume-skill/keyword overlaps
+
+# direct-ATS sources are preferred when a duplicate spans multiple boards, so the
+# kept listing links straight to the employer's application page
+DIRECT_SOURCES = {"Greenhouse", "Lever", "Ashby"}
+
+_CO_SUFFIX = re.compile(
+    r"\b(inc|llc|ltd|co|corp|corporation|gmbh|plc|sa|ag|pty|group|holdings)\b")
+_ROLE_NOISE = re.compile(
+    r"\b(remote|hybrid|on-?site|onsite|full-?time|part-?time|contract|permanent)\b")
+_ABBR = {"sr": "senior", "jr": "junior", "mgr": "manager"}
+
+
+def _norm_company(c):
+    c = _CO_SUFFIX.sub(" ", re.sub(r"[^a-z0-9 ]", " ", (c or "").lower()))
+    return re.sub(r"\s+", " ", c).strip()
+
+
+def _norm_role(r):
+    r = re.sub(r"\(.*?\)", " ", (r or "").lower())        # drop parentheticals
+    r = _ROLE_NOISE.sub(" ", r)                            # drop remote/full-time/etc.
+    r = re.sub(r"[^a-z0-9 ]", " ", r)
+    return " ".join(_ABBR.get(t, t) for t in r.split()).strip()
+
+
+def dedup_key(job):
+    """Cross-source key so the same role from different boards collapses to one."""
+    return (_norm_company(job.company), _norm_role(job.role))
 
 
 def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
@@ -49,7 +77,11 @@ def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
     stats = {"raw": len(raw), "from_google": len(google),
              "google_status": google_status, "dropped_quality": 0,
              "dropped_relevance": 0, "dropped_location": 0,
-             "dropped_worktype": 0, "kept": 0}
+             "dropped_worktype": 0, "dropped_duplicate": 0, "kept": 0}
+
+    # process direct-ATS listings first so a cross-board duplicate keeps the direct
+    # apply link (stable sort preserves each provider's original ordering)
+    raw.sort(key=lambda j: 0 if j.source in DIRECT_SOURCES else 1)
 
     if progress:
         progress(100, 100, f"Filtering & scoring {len(raw)} postings…")
@@ -63,8 +95,9 @@ def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
                 raise SearchTimeout("scoring phase exceeded time limit")
             if progress and idx:
                 progress(idx, total, f"Filtering & scoring {idx}/{total} postings…")
-        key = (job.company.lower().strip(), job.role.lower().strip())
+        key = dedup_key(job)
         if key in seen:
+            stats["dropped_duplicate"] += 1
             continue
         seen.add(key)
 

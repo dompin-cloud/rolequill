@@ -37,6 +37,7 @@
       <tr><td><strong>Strongest match</strong></td><td>{{ report.summary.top_match }}</td></tr>
       <tr><td><strong>Boards searched</strong></td><td>{{ report.summary.boards }}</td></tr>
       <tr><td><strong>Filtered out</strong></td><td>
+        {{ report.summary.dropped_duplicate }} duplicates ·
         {{ report.summary.dropped_quality }} ghost/scam/stale ·
         {{ report.summary.dropped_worktype }} work-type ·
         {{ report.summary.dropped_location }} location ·
