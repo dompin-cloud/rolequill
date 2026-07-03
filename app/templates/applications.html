@@ -21,6 +21,12 @@ rate updates automatically.</p>
   {% include "_tracking_tips.html" %}
 </details>
 
+<details class="tips-box">
+  <summary>➕ Add an application manually</summary>
+  <p class="muted">For roles you applied to before tracking, or from anywhere off RoleQuill.</p>
+  {% include "_add_application_form.html" %}
+</details>
+
 {% if apps %}
 <div class="table-wrap">
   <table class="tbl apps-tbl">
@@ -60,10 +66,10 @@ rate updates automatically.</p>
 {% else %}
 <div class="panel">
   <h3>No applications yet</h3>
-  <p class="muted">Run a search, then click <strong>＋ Track</strong> on any result to
-    start tracking it here. Here's how to make the most of it:</p>
-  {% include "_tracking_tips.html" %}
-  <a class="btn" href="{{ url_for('main.dashboard') }}">Run a search</a>
+  <p class="muted">Two ways to add them: run a search and click <strong>＋ Track</strong>
+    on any result, or add one by hand below (great for roles you applied to earlier).</p>
+  {% include "_add_application_form.html" %}
+  <a class="btn btn-ghost" href="{{ url_for('main.dashboard') }}">Run a search instead</a>
 </div>
 {% endif %}
 {% endblock %}

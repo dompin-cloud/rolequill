@@ -1,0 +1,33 @@
+<form method="post" action="{{ url_for('main.add_application_manual') }}" class="manual-app-form">
+  <div class="row">
+    <label>Role *<input type="text" name="role" required placeholder="e.g. Backend Engineer"></label>
+    <label>Company *<input type="text" name="company" required placeholder="e.g. Acme Corp"></label>
+  </div>
+  <div class="row">
+    <label>Status
+      <select name="status">
+        {% for s in statuses %}
+          <option value="{{ s }}" {% if s == 'applied' %}selected{% endif %}>{{ s|capitalize }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Date applied <span class="opt">(optional)</span>
+      <input type="date" name="applied_at">
+    </label>
+  </div>
+  <div class="row">
+    <label>Source <span class="opt">(optional)</span>
+      <input type="text" name="source" placeholder="e.g. LinkedIn, referral">
+    </label>
+    <label>Location <span class="opt">(optional)</span>
+      <input type="text" name="location" placeholder="e.g. Remote / Austin TX">
+    </label>
+  </div>
+  <label>Apply link <span class="opt">(optional)</span>
+    <input type="url" name="apply_link" placeholder="https://…">
+  </label>
+  <label>Notes <span class="opt">(optional)</span>
+    <input type="text" name="notes" placeholder="Anything to remember about this one">
+  </label>
+  <button class="btn" type="submit">Add application</button>
+</form>

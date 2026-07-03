@@ -373,6 +373,47 @@ def add_application():
     return redirect(request.referrer or url_for("main.applications"))
 
 
+@bp.route("/applications/add-manual", methods=("POST",))
+@login_required
+def add_application_manual():
+    """Add an application by hand (e.g. one applied to before tracking, or off-platform)."""
+    db = get_db()
+    role = (request.form.get("role") or "").strip()
+    company = (request.form.get("company") or "").strip()
+    if not role or not company:
+        flash("Role and company are required to add an application.", "error")
+        return redirect(url_for("main.applications"))
+
+    status = request.form.get("status")
+    if status not in APP_STATUSES:
+        status = "applied"
+    # empty apply_link must be NULL, not '', or the UNIQUE(user_id, apply_link) index
+    # would block a second linkless manual entry
+    apply_link = (request.form.get("apply_link") or "").strip() or None
+    source = (request.form.get("source") or "").strip() or "Manual"
+    location = (request.form.get("location") or "").strip() or None
+    notes = (request.form.get("notes") or "").strip() or None
+
+    # applied date: honor a date they typed (lets them backdate older applications),
+    # else stamp now for any sent status; 'saved' stays undated
+    typed = (request.form.get("applied_at") or "").strip()
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    applied_at = typed or (None if status == "saved" else now)
+    replied_at = (typed or now) if status in REPLY_STATUSES else None
+
+    cur = db.execute(
+        "INSERT OR IGNORE INTO applications (user_id, role, company, apply_link, "
+        "source, location, status, applied_at, replied_at, notes) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?)",
+        (g.user["id"], role, company, apply_link, source, location, status,
+         applied_at, replied_at, notes))
+    db.commit()
+    flash(f"Added {role} at {company} to your applications." if cur.rowcount
+          else "You're already tracking an application with that apply link.",
+          "success" if cur.rowcount else "error")
+    return redirect(url_for("main.applications"))
+
+
 @bp.route("/applications/<int:app_id>/status", methods=("POST",))
 @login_required
 def update_application(app_id):
