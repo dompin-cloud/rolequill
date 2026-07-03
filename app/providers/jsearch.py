@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 
 from .base import JobPosting, detect_work_type, parse_iso
 
-ENDPOINT = "https://jsearch.p.rapidapi.com/search"
+ENDPOINT = "https://jsearch.p.rapidapi.com/search-v2"   # JSearch v5 search endpoint
 HOST = "jsearch.p.rapidapi.com"
 
 
@@ -26,13 +26,12 @@ class JSearchProvider:
     def search(self, query, country=None, remote_only=False, date_posted="all"):
         if not (self.api_key and query):
             return []
+        # remote_only is folded into the query text (v5 /search-v2 has no such param)
         headers = {"X-RapidAPI-Key": self.api_key, "X-RapidAPI-Host": HOST}
-        params = {"query": query.strip(), "page": "1", "num_pages": str(self.pages),
+        params = {"query": query.strip(), "num_pages": str(self.pages),
                   "date_posted": date_posted}
         if country:
             params["country"] = country
-        if remote_only:
-            params["remote_jobs_only"] = "true"
 
         resp = self.session.get(ENDPOINT, headers=headers, params=params,
                                 timeout=self.timeout)
@@ -45,8 +44,17 @@ class JSearchProvider:
             msg = data.get("message") or data.get("error") or f"HTTP {resp.status_code}"
             raise RuntimeError(str(msg)[:200])
 
+        # v5 /search-v2 nests results under data.jobs; older shape was a flat list
+        container = data.get("data")
+        if isinstance(container, dict):
+            jobs_list = container.get("jobs") or []
+        elif isinstance(container, list):
+            jobs_list = container
+        else:
+            jobs_list = []
+
         out = []
-        for j in data.get("data", []) or []:
+        for j in jobs_list:
             posting = self._to_posting(j)
             if posting:
                 out.append(posting)
