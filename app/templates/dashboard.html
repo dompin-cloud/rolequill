@@ -22,8 +22,16 @@
     {% if resumes %}
       <ul class="resume-list">
         {% for r in resumes %}
-          <li><strong>{{ r.filename }}</strong>
-            <span class="muted">· {{ (r.skills|from_json)|length }} skills · {{ r.created_at }}</span></li>
+          <li>
+            <strong>{{ r.filename }}</strong>
+            <span class="muted">· {{ (r.skills|from_json)|length }} skills · {{ r.created_at }}</span>
+            <form method="post" action="{{ url_for('main.delete_resume', resume_id=r.id) }}"
+                  class="inline-form"
+                  onsubmit="return confirm('Delete this resume and its stored file?');">
+              <button class="btn-link-danger" type="submit"
+                      title="Delete this resume and its file">Delete</button>
+            </form>
+          </li>
         {% endfor %}
       </ul>
     {% else %}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Terms of Service — RoleQuill{% endblock %}
+{% block content %}
+{# Have a professional review this if you operate at scale or in the EU/UK. #}
+<article class="legal">
+  <h2>Terms of Service</h2>
+  <p class="muted">Last updated: July 3, 2026</p>
+
+  <p>These terms govern your use of RoleQuill (“the service”), operated by
+    <strong>Dominic Pinoteau</strong>. By creating an account you agree to them.</p>
+
+  <h3>The service</h3>
+  <p>RoleQuill runs automated job searches across public job feeds, filters and scores
+    results against your resume, and produces reports. Job listings come from
+    third-party sources; we surface and rank them but do not control them.</p>
+
+  <h3>No guarantee of results or employment</h3>
+  <p>We do not guarantee that any search will return matches, that listings are current,
+    accurate, or legitimate, or that using RoleQuill will lead to interviews or a job.
+    Scores and “ghost/scam/stale” filters are best-effort signals, not verified facts.
+    <strong>Always verify a posting and employer before applying or sharing personal
+    information.</strong></p>
+
+  <h3>Your account</h3>
+  <p>You’re responsible for keeping your login secure and for activity under your
+    account. Provide accurate information and use the service only for lawful, personal
+    job-seeking purposes. Don’t attempt to disrupt, overload, scrape, or reverse-engineer
+    the service, or use it to violate any third party’s terms.</p>
+
+  <h3>Credits &amp; payments</h3>
+  <p>Searches consume credits. New accounts receive free credits, and a free credit
+    refills weekly up to a cap. Purchased credits do not expire. A search is
+    automatically refunded a credit if it returns no results, times out, or is
+    interrupted by a restart. Purchases are processed by Stripe. Except where required
+    by law, purchased credits are non-refundable; if something goes wrong, contact us.</p>
+
+  <h3>Termination</h3>
+  <p>You can delete your account at any time from your Account page. We may suspend or
+    terminate accounts that violate these terms or the law. Purchased credits are
+    forfeited on deletion.</p>
+
+  <h3>Disclaimer &amp; limitation of liability</h3>
+  <p>The service is provided “as is,” without warranties of any kind. To the maximum
+    extent permitted by law, we are not liable for indirect or consequential damages, or
+    for decisions you make based on search results. Where liability cannot be excluded,
+    it is limited to the amount you paid us in the prior 12 months.</p>
+
+  <h3>Changes &amp; governing law</h3>
+  <p>We may update these terms; material changes update the date above. These terms are
+    governed by the laws of <strong>Wisconsin, USA</strong>.</p>
+
+  <h3>Contact</h3>
+  <p><a href="mailto:dompin@runicprinting.com">dompin@runicprinting.com</a>.
+    See also our <a href="{{ url_for('main.privacy') }}">Privacy Policy</a>.</p>
+</article>
+{% endblock %}

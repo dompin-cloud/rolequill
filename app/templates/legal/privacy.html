@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Privacy Policy — RoleQuill{% endblock %}
+{% block content %}
+{# Have a professional review this if you operate at scale or in the EU/UK. #}
+<article class="legal">
+  <h2>Privacy Policy</h2>
+  <p class="muted">Last updated: July 3, 2026</p>
+
+  <p>RoleQuill (“we”, “us”), operated by <strong>Dominic Pinoteau</strong>, runs an
+    automated job-search service at rolequill.com. This policy explains what data we
+    collect, why, who we share it with, and the choices you have. We aim to collect
+    the minimum needed to run the service and never sell your data.</p>
+
+  <h3>What we collect</h3>
+  <ul>
+    <li><strong>Account details</strong> — your email address and (optionally) your
+      full name. Passwords are stored only as a salted hash; we never see or store
+      your actual password.</li>
+    <li><strong>Resumes</strong> — the files you upload (PDF/DOCX/TXT) and the text
+      extracted from them, plus skills and profile keywords we detect. This is used to
+      match and score jobs for you.</li>
+    <li><strong>Search &amp; application data</strong> — the criteria you enter (title,
+      location, pay, work type, languages), the results we generate, and any
+      applications you choose to track.</li>
+    <li><strong>Payment records</strong> — if you buy credits, our payment processor
+      (Stripe) handles your card details. <strong>We never receive or store your card
+      number.</strong> We keep a record of the purchase and credits granted.</li>
+  </ul>
+
+  <h3>How we use it</h3>
+  <p>Solely to operate the service: authenticate you, run and score your job searches,
+    generate your reports and Excel exports, track applications you save, apply credits
+    and process payments, and keep the service secure. We do not use your resume or
+    email for advertising, and we do not sell your personal data to anyone.</p>
+
+  <h3>Who we share it with</h3>
+  <p>We share the minimum necessary with service providers that make RoleQuill work:</p>
+  <ul>
+    <li><strong>Render</strong> — hosting and database/file storage.</li>
+    <li><strong>Cloudflare</strong> — DNS and TLS (encryption in transit).</li>
+    <li><strong>Stripe</strong> — payment processing (their
+      <a href="https://stripe.com/privacy" rel="noopener" target="_blank">privacy policy</a>).</li>
+    <li><strong>Job-search providers</strong> — to find matches we send your search
+      terms (title, location, keywords) to SerpApi (Google Jobs) and RapidAPI/JSearch.
+      <strong>We never send your resume, email, or name to these providers.</strong></li>
+  </ul>
+
+  <h3>Who at RoleQuill can see your data</h3>
+  <p>We take internal access seriously. Our admin dashboard is deliberately built to
+    show only aggregate metrics and user initials — <strong>it does not display your
+    email address or your resume</strong>. As the operator, we retain the ability to
+    access the underlying database when strictly necessary to run, debug, or secure the
+    service, or to comply with the law. We commit to accessing individual resumes and
+    emails only for those purposes, never out of curiosity and never to share or sell
+    them.</p>
+
+  <h3>Security</h3>
+  <p>Data is transmitted over HTTPS. Passwords are hashed. Session cookies are
+    HTTP-only and, in production, restricted to HTTPS. No system is perfectly secure,
+    but we work to protect your data and to limit what we collect in the first place.</p>
+
+  <h3>Data retention</h3>
+  <p>We keep your data while your account is active. You can delete individual resumes
+    at any time from your dashboard, and you can delete your entire account and all
+    associated data at any time from your
+    <a href="{{ url_for('main.account') }}">Account &amp; privacy</a> page. Deletion
+    removes your records from our database and the associated files from disk.</p>
+
+  <h3>Your rights</h3>
+  <ul>
+    <li><strong>Access / portability</strong> — download everything we hold on you as a
+      JSON file from your <a href="{{ url_for('main.account') }}">Account</a> page.</li>
+    <li><strong>Erasure</strong> — permanently delete your account and data from the
+      same page.</li>
+    <li><strong>Correction</strong> — update your name or re-upload a resume at any
+      time, or contact us for help.</li>
+  </ul>
+  <p>Depending on where you live (e.g. the EU/UK under GDPR or California under CCPA),
+    you may have additional rights. Contact us and we will honor them.</p>
+
+  <h3>Children</h3>
+  <p>RoleQuill is not directed to anyone under 16, and we do not knowingly collect their
+    data.</p>
+
+  <h3>Changes</h3>
+  <p>If we make material changes to this policy we will update the date above and, where
+    appropriate, notify you.</p>
+
+  <h3>Contact</h3>
+  <p>Questions or privacy requests: <a href="mailto:dompin@runicprinting.com">dompin@runicprinting.com</a>.
+    Governing law: <strong>Wisconsin, USA</strong>.</p>
+</article>
+{% endblock %}

@@ -1,11 +1,12 @@
 """Main app routes: dashboard, resume upload, search, results, download."""
 import json
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from flask import (
-    Blueprint, abort, current_app, flash, g, jsonify, redirect,
-    render_template, request, send_file, url_for,
+    Blueprint, Response, abort, current_app, flash, g, jsonify, redirect,
+    render_template, request, send_file, session, url_for,
 )
 from werkzeug.utils import secure_filename
 
@@ -109,6 +110,32 @@ def upload_resume():
     flash(f"Resume uploaded — detected {len(skills)} core skills and {n_terms} "
           f"profile keywords from your skills, education & professional development.",
           "success")
+    return redirect(url_for("main.dashboard"))
+
+
+def _safe_unlink(path):
+    """Best-effort delete of a file on disk; never raises."""
+    try:
+        if path:
+            Path(path).unlink(missing_ok=True)
+    except OSError:
+        current_app.logger.warning("Could not remove file %s", path)
+
+
+@bp.route("/resume/<int:resume_id>/delete", methods=("POST",))
+@login_required
+def delete_resume(resume_id):
+    db = get_db()
+    r = db.execute("SELECT * FROM resumes WHERE id = ? AND user_id = ?",
+                   (resume_id, g.user["id"])).fetchone()
+    if not r:
+        abort(404)
+    # remove the stored file from disk, then the row (searches keep working:
+    # searches.resume_id is ON DELETE SET NULL)
+    _safe_unlink(r["stored_path"])
+    db.execute("DELETE FROM resumes WHERE id = ?", (resume_id,))
+    db.commit()
+    flash(f"Deleted resume “{r['filename']}” and its stored file.", "success")
     return redirect(url_for("main.dashboard"))
 
 
@@ -377,6 +404,99 @@ def delete_application(app_id):
                (app_id, g.user["id"]))
     db.commit()
     return redirect(url_for("main.applications"))
+
+
+# ---------------------------------------------------------------------------
+# Account, data export/deletion, and legal pages (privacy self-service)
+# ---------------------------------------------------------------------------
+
+@bp.route("/privacy")
+def privacy():
+    return render_template("legal/privacy.html")
+
+
+@bp.route("/terms")
+def terms():
+    return render_template("legal/terms.html")
+
+
+@bp.route("/account")
+@login_required
+def account():
+    db = get_db()
+    resume_count = db.execute(
+        "SELECT COUNT(*) FROM resumes WHERE user_id = ?", (g.user["id"],)).fetchone()[0]
+    search_count = db.execute(
+        "SELECT COUNT(*) FROM searches WHERE user_id = ?", (g.user["id"],)).fetchone()[0]
+    app_count = db.execute(
+        "SELECT COUNT(*) FROM applications WHERE user_id = ?", (g.user["id"],)).fetchone()[0]
+    return render_template("account.html", resume_count=resume_count,
+                           search_count=search_count, app_count=app_count)
+
+
+@bp.route("/account/export")
+@login_required
+def export_data():
+    """Download everything we hold on this user as a JSON file (right of access)."""
+    db = get_db()
+    uid = g.user["id"]
+
+    def rows(q):
+        return [dict(r) for r in db.execute(q, (uid,)).fetchall()]
+
+    user = dict(db.execute(
+        "SELECT id, email, full_name, free_credits, paid_credits, created_at "
+        "FROM users WHERE id = ?", (uid,)).fetchone())  # note: no password_hash
+    payload = {
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "account": user,
+        "resumes": rows("SELECT id, filename, text, skills, profile, created_at "
+                        "FROM resumes WHERE user_id = ?"),
+        "searches": rows("SELECT id, title_query, location, min_pay, work_type, "
+                         "languages, status, result_count, created_at, finished_at "
+                         "FROM searches WHERE user_id = ?"),
+        "applications": rows("SELECT id, role, company, apply_link, status, "
+                             "applied_at, replied_at, notes, created_at "
+                             "FROM applications WHERE user_id = ?"),
+        "credit_ledger": rows("SELECT delta, kind, balance_after, note, created_at "
+                              "FROM credit_ledger WHERE user_id = ?"),
+    }
+    body = json.dumps(payload, indent=2, default=str)
+    return Response(body, mimetype="application/json", headers={
+        "Content-Disposition": f'attachment; filename="rolequill-data-{uid}.json"'})
+
+
+@bp.route("/account/delete", methods=("POST",))
+@login_required
+def delete_account():
+    """Permanently erase the account and all associated data (right of erasure).
+
+    Requires the user to type their email to confirm. Removes DB rows (children
+    cascade via ON DELETE CASCADE) and every resume/export file from disk.
+    """
+    db = get_db()
+    uid = g.user["id"]
+    typed = (request.form.get("confirm_email") or "").strip().lower()
+    if typed != (g.user["email"] or "").strip().lower():
+        flash("Type your account email exactly to confirm deletion.", "error")
+        return redirect(url_for("main.account"))
+
+    # collect on-disk files BEFORE deleting the rows
+    files = [r["stored_path"] for r in db.execute(
+        "SELECT stored_path FROM resumes WHERE user_id = ?", (uid,)).fetchall()]
+    files += [r["export_path"] for r in db.execute(
+        "SELECT export_path FROM searches WHERE user_id = ? AND export_path IS NOT NULL",
+        (uid,)).fetchall()]
+
+    db.execute("DELETE FROM users WHERE id = ?", (uid,))  # cascades to all children
+    db.commit()
+    for f in files:
+        _safe_unlink(f)
+
+    session.clear()
+    flash("Your account and all associated data have been permanently deleted.",
+          "success")
+    return redirect(url_for("main.index"))
 
 
 def _owned_search(search_id):

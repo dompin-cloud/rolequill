@@ -175,6 +175,29 @@ h4.ok { color: #145222; } h4.warn { color: #8a5a00; }
   color: #fff; border-radius: 6px; padding: 2px 7px; font-size: 12px; font-weight: 700; letter-spacing: .5px; }
 
 .foot { text-align: center; color: var(--muted); font-size: 12px; padding: 24px; border-top: 1px solid var(--line); }
+.foot p { margin: 4px 0; }
+.foot-links a { color: var(--muted); font-weight: 600; }
+
+/* legal pages */
+.legal { max-width: 760px; margin: 0 auto; background: #fff; border: 1px solid var(--line);
+  border-radius: 12px; padding: 28px 34px; }
+.legal h2 { margin-top: 0; color: var(--navy); }
+.legal h3 { margin: 22px 0 6px; color: var(--navy); font-size: 17px; }
+.legal ul { padding-left: 20px; }
+.legal li { margin-bottom: 6px; }
+
+/* account: consent + danger zone */
+.consent { display: flex; align-items: flex-start; gap: 8px; font-weight: 400; font-size: 13px; }
+.consent input { width: auto; margin-top: 3px; }
+.inline-form { display: inline; }
+.resume-list li form.inline-form { float: right; }
+.btn-link-danger { background: none; border: 0; color: var(--muted); cursor: pointer;
+  font-size: 13px; padding: 0; }
+.btn-link-danger:hover { color: #7a1020; text-decoration: underline; }
+.danger-zone { border-color: var(--red); }
+.danger-zone h3 { color: #7a1020; }
+.btn-danger { background: #b42318; }
+.btn-danger:hover { background: #921910; }
 @media (max-width: 860px) { .packs { grid-template-columns: 1fr; } }
 
 @media (max-width: 860px) {

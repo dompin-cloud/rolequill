@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Account & privacy — RoleQuill{% endblock %}
+{% block content %}
+<h2>Account &amp; privacy</h2>
+<p class="muted">Signed in as {{ g.user.full_name or g.user.email }}.</p>
+
+<section class="panel">
+  <h3>What we hold for you</h3>
+  <ul class="resume-list">
+    <li>{{ resume_count }} resume{{ '' if resume_count == 1 else 's' }} (file + extracted text)</li>
+    <li>{{ search_count }} search{{ '' if search_count == 1 else 'es' }}</li>
+    <li>{{ app_count }} tracked application{{ '' if app_count == 1 else 's' }}</li>
+  </ul>
+  <p class="muted">See exactly how this is used in our
+    <a href="{{ url_for('main.privacy') }}">Privacy Policy</a>.</p>
+</section>
+
+<section class="panel">
+  <h3>Export your data</h3>
+  <p>Download everything we hold on your account — profile, resumes (including the
+    extracted text), searches, applications, and credit history — as a JSON file.
+    Your password is never included.</p>
+  <a class="btn" href="{{ url_for('main.export_data') }}">⬇ Download my data (JSON)</a>
+</section>
+
+<section class="panel danger-zone">
+  <h3>Delete your account</h3>
+  <p>This permanently erases your account and <strong>all</strong> associated data —
+    your resumes and their stored files, searches, results, tracked applications, and
+    credit history. Purchased credits are forfeited and this cannot be undone.</p>
+  <form method="post" action="{{ url_for('main.delete_account') }}"
+        onsubmit="return confirm('Permanently delete your account and all data? This cannot be undone.');">
+    <label>Type your email (<code>{{ g.user.email }}</code>) to confirm
+      <input type="email" name="confirm_email" autocomplete="off" required
+             placeholder="{{ g.user.email }}">
+    </label>
+    <button class="btn btn-danger" type="submit">Permanently delete my account</button>
+  </form>
+</section>
+{% endblock %}

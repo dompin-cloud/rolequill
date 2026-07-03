@@ -47,6 +47,7 @@ def register():
         email = (request.form.get("email") or "").strip().lower()
         password = request.form.get("password") or ""
         full_name = (request.form.get("full_name") or "").strip()
+        consent = request.form.get("consent")
         db = get_db()
         error = None
 
@@ -54,6 +55,8 @@ def register():
             error = "A valid email is required."
         elif len(password) < 8:
             error = "Password must be at least 8 characters."
+        elif not consent:
+            error = "Please agree to the Terms of Service and Privacy Policy to continue."
 
         if error is None:
             try:

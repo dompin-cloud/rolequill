@@ -29,6 +29,7 @@
         <span class="who">{{ g.user.full_name or g.user.email }}</span>
         <a href="{{ url_for('main.dashboard') }}">Dashboard</a>
         <a href="{{ url_for('main.applications') }}">Applications</a>
+        <a href="{{ url_for('main.account') }}">Account</a>
         {% if g.is_admin %}<a href="{{ url_for('main.admin') }}">Admin</a>{% endif %}
         <a href="{{ url_for('auth.logout') }}">Log out</a>
       {% else %}
@@ -50,8 +51,12 @@
   </main>
 
   <footer class="foot">
-    RoleQuill — automated job search across public ATS feeds (Greenhouse · Lever · Ashby).
-    Results filtered for ghost/scam/stale posts. Always verify before applying.
+    <p>RoleQuill — automated job search across public ATS feeds (Greenhouse · Lever · Ashby).
+    Results filtered for ghost/scam/stale posts. Always verify before applying.</p>
+    <p class="foot-links">
+      <a href="{{ url_for('main.privacy') }}">Privacy Policy</a> ·
+      <a href="{{ url_for('main.terms') }}">Terms of Service</a>
+    </p>
   </footer>
   {% block scripts %}{% endblock %}
 </body>
