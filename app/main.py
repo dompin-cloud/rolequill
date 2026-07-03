@@ -382,6 +382,20 @@ def view_search(search_id):
     return render_template("search.html", search=s, jobs=jobs)
 
 
+@bp.route("/search/<int:search_id>/report")
+@login_required
+def search_report(search_id):
+    s = _owned_search(search_id)
+    if not s["report_json"]:
+        flash("The full report isn't ready for this search.", "error")
+        return redirect(url_for("main.view_search", search_id=search_id))
+    jobs = get_db().execute(
+        "SELECT * FROM jobs WHERE search_id = ? ORDER BY match_score DESC",
+        (search_id,)).fetchall()
+    report = json.loads(s["report_json"])
+    return render_template("report.html", search=s, report=report, jobs=jobs)
+
+
 @bp.route("/search/<int:search_id>/status")
 @login_required
 def search_status(search_id):

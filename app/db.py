@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS searches (
     error         TEXT,
     result_count  INTEGER DEFAULT 0,
     export_path   TEXT,
+    report_json   TEXT,            -- structured full report (top matches, ATS, gaps, strategy, summary)
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
     finished_at   TEXT
 );
@@ -137,6 +138,8 @@ def _migrate(db):
             db.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
     if not _column_exists(db, "searches", "credit_source"):
         db.execute("ALTER TABLE searches ADD COLUMN credit_source TEXT")
+    if not _column_exists(db, "searches", "report_json"):
+        db.execute("ALTER TABLE searches ADD COLUMN report_json TEXT")
     db.commit()
 
 

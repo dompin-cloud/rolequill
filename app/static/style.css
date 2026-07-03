@@ -101,6 +101,10 @@ form input, form select {
 .rscope { font-size: 11px; color: #145222; margin-top: 3px; font-weight: 600; }
 .hint { font-size: 12px; color: var(--muted); margin: 4px 0 12px; }
 .opt { color: var(--muted); font-weight: 400; font-size: 12px; }
+.tips-box { margin-top: 14px; font-size: 14px; }
+.tips-box summary { cursor: pointer; font-weight: 600; color: var(--blue); }
+.tips { margin: 10px 0 0; padding-left: 20px; color: #36424f; }
+.tips li { margin-bottom: 7px; }
 .score { font-weight: 700; text-align: center; font-size: 15px; }
 .score-hi { background: var(--green); }
 .score-mid { background: var(--yellow); }
@@ -151,6 +155,22 @@ form input, form select {
 .status-offer { background: #d6f5d6; color: #0b6b23; }
 .status-rejected { background: var(--red); color: #7a1020; }
 .status-saved { background: #f0f0f0; color: #555; }
+
+/* full report */
+.report-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 18px; position: sticky; top: 0;
+  background: var(--bg); padding: 8px 0; z-index: 5; }
+.report-tabs a { background: #fff; border: 1px solid var(--line); border-radius: 999px;
+  padding: 6px 14px; font-size: 13px; font-weight: 600; }
+.report-tabs a:hover { background: #eef3fb; text-decoration: none; }
+.match-card { border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+.match-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.match-head .rank { background: var(--navy); color: #fff; border-radius: 6px; padding: 1px 8px; font-weight: 700; font-size: 13px; }
+.match-card .score { padding: 1px 8px; border-radius: 6px; font-size: 12px; }
+.match-card .miss { color: #8a5a00; font-size: 13px; }
+.match-card .apply { display: inline-block; margin-top: 4px; }
+ul.kw { margin: 6px 0 14px; padding-left: 18px; font-size: 14px; }
+ul.kw li { margin-bottom: 5px; }
+h4.ok { color: #145222; } h4.warn { color: #8a5a00; }
 
 .foot { text-align: center; color: var(--muted); font-size: 12px; padding: 24px; border-top: 1px solid var(--line); }
 @media (max-width: 860px) { .packs { grid-template-columns: 1fr; } }

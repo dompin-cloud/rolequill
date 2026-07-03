@@ -8,6 +8,7 @@ from . import credits
 from .db import standalone_connection
 from .pipeline import run_search
 from .pipeline.excel_export import build_workbook, post_status
+from .pipeline.report import build_report
 from .providers.base import SearchTimeout
 
 
@@ -97,6 +98,10 @@ def _run(app, search_id):
             resume_skills=resume_skills, stats=stats, criteria=criteria,
             search_date=datetime.now().strftime("%Y-%m-%d"), profile=profile,
         )
+
+        # structured report for the in-app full view
+        report = build_report(jobs, resume_skills, profile, stats, criteria)
+        _set(conn, search_id, report_json=json.dumps(report))
 
         note = f"Done — {stats['kept']} matches from {stats['raw']} scanned."
         if stats.get("google_status"):

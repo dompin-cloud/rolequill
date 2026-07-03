@@ -82,6 +82,10 @@
       <p class="cost-note">Uses 1 credit (🪶 {{ g.credits if g.credits is not none else 0 }} left).
         Refunded automatically if no matches. <a href="{{ url_for('main.credits') }}">Get more</a></p>
     </form>
+    <details class="tips-box">
+      <summary>💡 Tips for better results</summary>
+      {% include "_tips.html" %}
+    </details>
   </section>
 </div>
 

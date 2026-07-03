@@ -19,7 +19,8 @@
 <div id="results-area" {% if search.status != 'done' %}style="display:none"{% endif %}>
   <div class="results-head">
     <strong id="match-count">{{ jobs|length }}</strong> matches found.
-    <a class="btn" id="dl-btn" href="{{ url_for('main.download_search', search_id=search.id) }}">⬇ Download Excel report</a>
+    <a class="btn" href="{{ url_for('main.search_report', search_id=search.id) }}">📊 View full report</a>
+    <a class="btn btn-ghost" id="dl-btn" href="{{ url_for('main.download_search', search_id=search.id) }}">⬇ Download Excel</a>
   </div>
   {% if jobs %}
   <div class="table-wrap">
@@ -58,8 +59,12 @@
 </div>
 
 <div id="empty-area" {% if not (search.status == 'done' and jobs|length == 0) %}style="display:none"{% endif %}>
-  <p class="muted">No qualifying matches. Try broadening the title, lowering min pay, or
-  adding more company tokens in <code>app/providers/companies.py</code>, then re-run.</p>
+  <div class="panel">
+    <h3>No matches this time — here's how to get more</h3>
+    <p class="muted">Your credit was refunded. Try one or two of these, then run again:</p>
+    {% include "_tips.html" %}
+    <a class="btn" href="{{ url_for('main.dashboard') }}">Adjust & re-run</a>
+  </div>
 </div>
 {% endblock %}
 

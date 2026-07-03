@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Full report — RoleQuill{% endblock %}
+{% block content %}
+<a class="muted" href="{{ url_for('main.view_search', search_id=search.id) }}">← Back to results</a>
+<div class="results-head">
+  <h2 style="margin:0">Full report</h2>
+  <a class="btn btn-ghost" href="{{ url_for('main.download_search', search_id=search.id) }}">⬇ Download Excel</a>
+</div>
+<p class="muted">
+  {{ search.title_query or '(skills-first)' }}
+  {% if search.location %}· {{ search.location }}{% endif %}
+  · {{ search.work_type }}
+</p>
+
+<nav class="report-tabs">
+  <a href="#summary">Summary</a>
+  <a href="#top">Top matches</a>
+  <a href="#ats">ATS keywords</a>
+  <a href="#gaps">Skill gaps</a>
+  <a href="#strategy">Strategy</a>
+  <a href="#listings">All listings</a>
+</nav>
+
+<!-- 1. Summary -->
+<section id="summary" class="panel">
+  <h3>📋 Summary</h3>
+  <div class="stat-row">
+    <div class="stat stat-hero"><div class="stat-num">{{ report.summary.total }}</div><div class="stat-label">Matches</div></div>
+    <div class="stat"><div class="stat-num">{{ report.summary.raw }}</div><div class="stat-label">Postings scanned</div></div>
+    <div class="stat"><div class="stat-num">{{ report.ats.avg }}%</div><div class="stat-label">Avg ATS score</div></div>
+  </div>
+  <table class="tbl">
+    <tbody>
+      <tr><td><strong>Top companies</strong></td><td>{{ report.summary.top_companies|join(', ') or '—' }}</td></tr>
+      <tr><td><strong>Most in-demand skills</strong></td><td>{{ report.summary.common_skills|join(', ') or '—' }}</td></tr>
+      <tr><td><strong>Best-paying role</strong></td><td>{{ report.summary.best_pay }}</td></tr>
+      <tr><td><strong>Strongest match</strong></td><td>{{ report.summary.top_match }}</td></tr>
+      <tr><td><strong>Boards searched</strong></td><td>{{ report.summary.boards }}</td></tr>
+      <tr><td><strong>Filtered out</strong></td><td>
+        {{ report.summary.dropped_quality }} ghost/scam/stale ·
+        {{ report.summary.dropped_worktype }} work-type ·
+        {{ report.summary.dropped_location }} location ·
+        {{ report.summary.dropped_relevance }} off-target</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 2. Top matches -->
+<section id="top" class="panel">
+  <h3>🏆 Top matches</h3>
+  {% for t in report.top_matches %}
+    <div class="match-card">
+      <div class="match-head">
+        <span class="rank">#{{ t.rank }}</span>
+        <strong>{{ t.company }} — {{ t.role }}</strong>
+        <span class="score score-{{ 'hi' if t.match>=80 else ('mid' if t.match>=60 else 'lo') }}">Match {{ t.match }}</span>
+        <span class="ats">ATS {{ t.ats }}</span>
+      </div>
+      <p>{{ t.why }}</p>
+      <p class="muted">💰 {{ t.salary }} · 📍 {{ t.remote_scope or t.location }} ({{ t.work_type }}) · {{ t.source }}</p>
+      {% if t.missing and 'None' not in t.missing %}<p class="miss">Gaps: {{ t.missing }}</p>{% endif %}
+      {% if t.apply_link %}<a class="apply" href="{{ t.apply_link }}" target="_blank" rel="noopener">Apply ↗</a>{% endif %}
+    </div>
+  {% else %}<p class="muted">No matches.</p>{% endfor %}
+</section>
+
+<!-- 3. ATS keywords -->
+<section id="ats" class="panel">
+  <h3>🎯 ATS keywords <span class="muted">(avg {{ report.ats.avg }}/100)</span></h3>
+  <div class="grid-2">
+    <div>
+      <h4 class="ok">✅ On your resume</h4>
+      <ul class="kw">{% for s in report.ats.strengths %}<li>{{ s.skill }}{% if s.demand %} <span class="muted">· in {{ s.demand }} postings</span>{% endif %}</li>{% endfor %}</ul>
+      {% if report.ats.education %}<h4>🎓 Education</h4><ul class="kw">{% for e in report.ats.education %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      {% if report.ats.prof_dev %}<h4>📜 Professional development</h4><ul class="kw">{% for d in report.ats.prof_dev %}<li>{{ d }}</li>{% endfor %}</ul>{% endif %}
+    </div>
+    <div>
+      <h4 class="warn">⚠ In-demand, not on resume</h4>
+      <ul class="kw">{% for g in report.ats.gaps %}<li>{{ g.skill }} <span class="muted">· {{ g.demand }} postings</span></li>{% else %}<li class="muted">Strong coverage — no notable gaps.</li>{% endfor %}</ul>
+      <h4>📊 Per-role ATS estimate</h4>
+      <ul class="kw">{% for e in report.ats.estimates %}<li>{{ e.company }} — {{ e.role }}: <strong>~{{ e.ats }}</strong></li>{% endfor %}</ul>
+    </div>
+  </div>
+</section>
+
+<!-- 4. Skill gaps -->
+<section id="gaps" class="panel">
+  <h3>🧭 Skill gap analysis</h3>
+  {% if report.skill_gaps %}
+  <table class="tbl">
+    <thead><tr><th>Skill</th><th>Demand</th><th>Recommended action</th></tr></thead>
+    <tbody>
+      {% for g in report.skill_gaps %}
+        <tr><td>{{ g.skill }}</td><td class="nowrap">{{ g.freq }} / {{ g.total }}</td><td>{{ g.action }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="muted">No significant gaps — your resume covers the in-demand keywords.</p>{% endif %}
+</section>
+
+<!-- 5. Strategy -->
+<section id="strategy" class="panel">
+  <h3>🗺 Application strategy</h3>
+  <h4>🎯 Apply today</h4>
+  <ul class="kw">{% for a in report.strategy.today %}<li><strong>{{ a.company }} — {{ a.role }}</strong> (match {{ a.match }}, ATS {{ a.ats }}){% if a.apply_link %} · <a href="{{ a.apply_link }}" target="_blank" rel="noopener">apply ↗</a>{% endif %}</li>{% endfor %}</ul>
+  {% if report.strategy.week %}<h4>📝 Apply this week</h4>
+  <ul class="kw">{% for a in report.strategy.week %}<li>{{ a.company }} — {{ a.role }} (match {{ a.match }}){% if a.apply_link %} · <a href="{{ a.apply_link }}" target="_blank" rel="noopener">apply ↗</a>{% endif %}</li>{% endfor %}</ul>{% endif %}
+  {% if report.strategy.resume_tips %}<h4>✍ Resume tips</h4>
+  <ul class="kw">{% for t in report.strategy.resume_tips %}<li>{{ t }}</li>{% endfor %}</ul>{% endif %}
+  <h4>📅 Follow-up</h4>
+  <ul class="kw">{% for f in report.strategy.followups %}<li>{{ f }}</li>{% endfor %}</ul>
+</section>
+
+<!-- 6. Listings -->
+<section id="listings" class="panel">
+  <h3>📄 All listings ({{ jobs|length }})</h3>
+  <div class="table-wrap">
+    <table class="tbl jobs">
+      <thead><tr><th>Match</th><th>ATS</th><th>Role</th><th>Company</th><th>Location</th><th>Salary</th><th></th></tr></thead>
+      <tbody>
+        {% for j in jobs %}
+          <tr>
+            <td class="score score-{{ 'hi' if j.match_score>=80 else ('mid' if j.match_score>=60 else 'lo') }}">{{ j.match_score }}</td>
+            <td class="ats">{{ j.ats_score }}</td>
+            <td><strong>{{ j.role }}</strong><div class="src">{{ j.source }}</div></td>
+            <td>{{ j.company }}</td>
+            <td>{{ j.location }}{% if j.remote_scope %}<div class="rscope">📍 {{ j.remote_scope }}</div>{% endif %}</td>
+            <td>{{ j.salary }}</td>
+            <td>{% if j.apply_link %}<a class="apply" href="{{ j.apply_link }}" target="_blank" rel="noopener">Apply ↗</a>{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
