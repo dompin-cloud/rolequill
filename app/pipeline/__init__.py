@@ -3,7 +3,7 @@ import re
 import time
 
 from . import geo, lang
-from ..providers import fetch_all, fetch_query_sources
+from ..providers import fetch_all, fetch_jsearch_source, fetch_query_sources
 from ..providers.base import SearchTimeout
 from .filters import classify
 from .scoring import geo_verdict, score_job, title_relevance, work_type_ok
@@ -43,7 +43,7 @@ def dedup_key(job):
 
 def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
                timeout, progress=None, profile_terms=(), serpapi_key=None,
-               google_pages=1, time_limit=None):
+               google_pages=1, jsearch_key=None, jsearch_pages=1, time_limit=None):
     """criteria: title_query, location, min_pay, work_type, languages.
     Returns (ranked_jobs, stats). Raises SearchTimeout if it exceeds time_limit secs."""
     deadline = (time.monotonic() + time_limit) if time_limit else None
@@ -74,8 +74,17 @@ def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
         timeout=timeout, progress=progress, deadline=deadline)
     raw.extend(google)
 
+    # JSearch (LinkedIn / Indeed / ZipRecruiter …) — same query, geo/remote hints
+    jsearch, jsearch_status = fetch_jsearch_source(
+        google_q, jsearch_key=jsearch_key, pages=jsearch_pages,
+        country=("us" if "US" in desired_geo else None),
+        remote_only=(work_type == "remote"), timeout=timeout, progress=progress,
+        deadline=deadline)
+    raw.extend(jsearch)
+
     stats = {"raw": len(raw), "from_google": len(google),
-             "google_status": google_status, "dropped_quality": 0,
+             "from_jsearch": len(jsearch), "google_status": google_status,
+             "jsearch_status": jsearch_status, "dropped_quality": 0,
              "dropped_relevance": 0, "dropped_location": 0,
              "dropped_worktype": 0, "dropped_duplicate": 0, "kept": 0}
 

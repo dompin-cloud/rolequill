@@ -9,6 +9,7 @@ from .base import SearchTimeout
 from .companies import REGISTRY
 from .google_jobs import GoogleJobsProvider
 from .greenhouse import GreenhouseProvider
+from .jsearch import JSearchProvider
 from .lever import LeverProvider
 
 PROVIDER_CLASSES = {
@@ -96,4 +97,27 @@ def fetch_query_sources(query, location="", *, serpapi_key=None, pages=1,
         results, status = [], f"error: {e}"
     if progress:
         progress(0, 0, f"Google Jobs: {status}")
+    return results, status
+
+
+def fetch_jsearch_source(query, *, jsearch_key=None, pages=1, country=None,
+                         remote_only=False, timeout=15, progress=None, deadline=None):
+    """JSearch (LinkedIn/Indeed/ZipRecruiter…). Returns (results, status)."""
+    if not jsearch_key:
+        return [], "disabled (no JSEARCH_KEY set)"
+    if not query:
+        return [], "skipped (no title or resume skills to query)"
+    if deadline and time.monotonic() > deadline:
+        return [], "skipped (time limit)"
+    if progress:
+        progress(0, 0, "Querying JSearch (LinkedIn/Indeed/ZipRecruiter)…")
+    session = _make_session()
+    jp = JSearchProvider(session, jsearch_key, timeout=timeout, pages=pages)
+    try:
+        results = jp.search(query, country=country, remote_only=remote_only)
+        status = f"ok — {len(results)} postings"
+    except Exception as e:  # noqa: BLE001
+        results, status = [], f"error: {e}"
+    if progress:
+        progress(0, 0, f"JSearch: {status}")
     return results, status

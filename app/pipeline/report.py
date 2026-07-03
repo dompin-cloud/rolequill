@@ -81,7 +81,8 @@ def build_report(jobs, resume_skills, profile, stats, criteria):
     }
 
     boards = "Greenhouse · Lever · Ashby" + (
-        " · Google Jobs" if stats.get("from_google") else "")
+        " · Google Jobs" if stats.get("from_google") else "") + (
+        " · LinkedIn/Indeed/ZipRecruiter (JSearch)" if stats.get("from_jsearch") else "")
     summary = {
         "total": total,
         "raw": stats.get("raw", 0),

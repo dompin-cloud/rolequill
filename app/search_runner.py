@@ -69,6 +69,8 @@ def _run(app, search_id):
             profile_terms=profile_terms,
             serpapi_key=cfg.get("SERPAPI_KEY"),
             google_pages=cfg.get("GOOGLE_JOBS_PAGES", 1),
+            jsearch_key=cfg.get("JSEARCH_KEY"),
+            jsearch_pages=cfg.get("JSEARCH_PAGES", 1),
             time_limit=cfg.get("SEARCH_TIME_LIMIT", 120),
         )
 
@@ -106,6 +108,8 @@ def _run(app, search_id):
         note = f"Done — {stats['kept']} matches from {stats['raw']} scanned."
         if stats.get("google_status"):
             note += f"  |  Google Jobs: {stats['google_status']}"
+        if stats.get("jsearch_status"):
+            note += f"  |  JSearch: {stats['jsearch_status']}"
         # no value -> refund the credit
         if stats["kept"] == 0 and s["credit_source"] in ("free", "paid"):
             credits.refund_search(conn, s["user_id"], s["credit_source"])
