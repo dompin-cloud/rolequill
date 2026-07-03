@@ -171,6 +171,8 @@ form input, form select {
 ul.kw { margin: 6px 0 14px; padding-left: 18px; font-size: 14px; }
 ul.kw li { margin-bottom: 5px; }
 h4.ok { color: #145222; } h4.warn { color: #8a5a00; }
+.initials { display: inline-block; min-width: 30px; text-align: center; background: var(--navy);
+  color: #fff; border-radius: 6px; padding: 2px 7px; font-size: 12px; font-weight: 700; letter-spacing: .5px; }
 
 .foot { text-align: center; color: var(--muted); font-size: 12px; padding: 24px; border-top: 1px solid var(--line); }
 @media (max-width: 860px) { .packs { grid-template-columns: 1fr; } }

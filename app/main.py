@@ -25,6 +25,13 @@ REPLY_STATUSES = {"replied", "interview", "offer", "rejected"}
 SENT_STATUSES = {"applied", "replied", "interview", "offer", "rejected"}
 
 
+def _initials(name, uid):
+    """Non-PII display label: initials from the name, else '#<id>'."""
+    parts = [p for p in (name or "").split() if p]
+    ini = "".join(p[0].upper() for p in parts[:3])
+    return ini or f"#{uid}"
+
+
 def _application_stats(apps):
     sent = sum(1 for a in apps if a["status"] in SENT_STATUSES)
     replies = sum(1 for a in apps if a["status"] in REPLY_STATUSES)
@@ -284,15 +291,22 @@ def admin():
         "total_matches": total_matches,
         "avg_matches": round(total_matches / searches_done, 1) if searches_done else 0,
     }
-    recent_users = db.execute(
-        "SELECT u.email, u.created_at, "
+    users_raw = db.execute(
+        "SELECT u.id, u.full_name, u.created_at, "
         "(SELECT COUNT(*) FROM searches s WHERE s.user_id=u.id) AS searches, "
         "(SELECT COUNT(*) FROM applications a WHERE a.user_id=u.id) AS apps "
         "FROM users u ORDER BY u.id DESC LIMIT 15").fetchall()
-    recent_searches = db.execute(
-        "SELECT s.title_query, s.status, s.result_count, s.created_at, u.email "
+    recent_users = [{"who": _initials(u["full_name"], u["id"]),
+                     "created_at": u["created_at"], "searches": u["searches"],
+                     "apps": u["apps"]} for u in users_raw]
+    searches_raw = db.execute(
+        "SELECT s.title_query, s.status, s.result_count, s.created_at, "
+        "u.full_name, u.id AS uid "
         "FROM searches s JOIN users u ON s.user_id = u.id "
         "ORDER BY s.id DESC LIMIT 12").fetchall()
+    recent_searches = [{"title_query": s["title_query"], "status": s["status"],
+                        "result_count": s["result_count"], "created_at": s["created_at"],
+                        "who": _initials(s["full_name"], s["uid"])} for s in searches_raw]
     return render_template("admin.html", m=m, recent_users=recent_users,
                            recent_searches=recent_searches)
 
