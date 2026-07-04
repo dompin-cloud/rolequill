@@ -1,7 +1,7 @@
 # RoleQuill — Session Handoff / Context
 
 Paste this into a new session (or just reference it) to continue without re-deriving
-everything. Last updated: 2026-07-04.
+everything. Last updated: 2026-07-04 (added opt-in email 2FA).
 
 ## What RoleQuill is
 A multi-user **Flask** web service (Python; local 3.14, Render 3.13) that runs an
@@ -56,6 +56,19 @@ Title is **optional** (blank = skills-first).
   not the email exists). Reset requests are rate-limited (5/IP). Email sent via
   **Resend** (`app/mailer.py`, HTTPS API over `requests` — no new deps); body in
   `templates/email/reset.html`. Disabled gracefully if `RESEND_API_KEY` unset.
+- **Two-factor auth (email OTP, opt-in)** (`auth.py`): per-user `users.twofa_email`
+  flag, enabled from `/account`. On login from an untrusted device we email a 6-digit
+  code (`login_codes` table, SHA-256 of the code, single-use, 10-min TTL, 5 wrong-guess
+  cap) and hold the session as `pending_2fa_user` until `/auth/verify` succeeds. Codes
+  and resends are rate-limited via `ratelimit.py`. Enrollment (`/auth/2fa/enable` →
+  `/auth/2fa/confirm`) sends a code first so a dead inbox can't self-lockout; disable
+  (`/auth/2fa/disable`) requires the current password. **"Trust this device"** (30 days)
+  = a random token whose SHA-256 is stored in `trusted_devices`, raw token in the `rq_td`
+  cookie; skips the code on that browser. Password reset revokes trusted devices + pending
+  codes. **Recovery is email-bound** (OTP + reset both go to the inbox) — a user who loses
+  email access is locked out; escape hatch is `UPDATE users SET twofa_email=0 WHERE email=?`
+  in the DB. Needs `RESEND_API_KEY` set (the Enable button hides itself if email is off).
+  Backup one-time recovery codes are a sensible phase-2 add.
 - **Credits** (`credits.py`): freemium + pay-as-you-go. 3 free on signup, +1/week
   (cap 2), purchased never expire. Auto-refund on: 0 results, 120s timeout, and
   restart-orphaned searches (startup `reconcile_orphans`). Packs: Starter 5/$5,
@@ -126,6 +139,8 @@ Numeric env vars are parsed with `_int_env` (blank/bad value → default, never 
   auto reply-tracking; per-source reply-rate on admin.
 
 ## Recent commit trail (newest first)
+opt-in email 2FA (one-time login codes: login_codes + trusted_devices tables,
+users.twofa_email flag, /auth/verify + enroll/disable, "trust this device") →
 manual application entry (Applications page) → query-aggregator timeout split
 (QUERY_TIMEOUT=30 so SerpApi isn't cut off at 12s) + tracking tips moved atop results →
 application-tracking tips (search results + Applications pages) →
