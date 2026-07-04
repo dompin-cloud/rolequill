@@ -1,7 +1,7 @@
 # RoleQuill — Session Handoff / Context
 
 Paste this into a new session (or just reference it) to continue without re-deriving
-everything. Last updated: 2026-07-03.
+everything. Last updated: 2026-07-04.
 
 ## What RoleQuill is
 A multi-user **Flask** web service (Python; local 3.14, Render 3.13) that runs an
@@ -63,8 +63,10 @@ Title is **optional** (blank = skills-first).
 - **Stripe** LIVE (runicmenagerie account). Webhook `POST /credits/webhook`, verifies
   signature then reads **raw JSON** (Stripe lib objects aren't dict-like). Idempotent
   via `stripe_events` table. Snapshot payload destination named "RoleQuill".
-- **Application tracker** (`/applications`): Track button on results → status
-  (Applied→Replied→Interview→Offer/Rejected) → **reply rate** metric.
+- **Application tracker** (`/applications`): ＋Track button on results OR **manual entry**
+  (`/applications/add-manual`, backdatable) → status (Applied→Replied→Interview→
+  Offer/Rejected) → **reply rate** metric. Collapsible tracking-tips + add-form boxes.
+  Linkless manual entries store apply_link as NULL (UNIQUE(user_id, apply_link) index).
 - **Admin** (`/admin`): owner-only via `ROLEQUILL_ADMIN_EMAIL` (404 for others). Shows
   users, applications, reply rate, matches. Uses **initials, not emails** (PII) — the
   admin UI never selects/renders email or resume text (backs the privacy-policy claim).
@@ -92,6 +94,8 @@ Title is **optional** (blank = skills-first).
 optional `ROLEQUILL_GOOGLE_PAGES`/`ROLEQUILL_JSEARCH_PAGES` (default 1).
 **Email (password reset):** `RESEND_API_KEY`, optional `RESEND_FROM` (default
 `RoleQuill <noreply@rolequill.com>`; must use a Resend-verified domain).
+**Timeouts:** `FETCH_TIMEOUT`=12 (per ATS board), `ROLEQUILL_QUERY_TIMEOUT`=30 (SerpApi
+Google Jobs + JSearch — they're a single slow live search; raise if Google Jobs "timed out").
 Numeric env vars are parsed with `_int_env` (blank/bad value → default, never crashes).
 
 ## Hard-won gotchas
@@ -108,18 +112,24 @@ Numeric env vars are parsed with `_int_env` (blank/bad value → default, never 
   (set during the OOM fight). User wants more → raise it in Render (try 60) and watch
   for OOM, or upgrade Render to Standard (2 GB, ~$25/mo). Can also expand company token
   lists in `companies.py`.
+- **Email: DONE & live** — Resend key set in Render, rolequill.com verified with
+  SPF/DKIM in Cloudflare; password reset delivers end-to-end. (Gotcha fixed: a
+  dashboard `RESEND_FROM` value pasted with surrounding quotes 422'd at Resend →
+  config now strips quotes/whitespace.)
 - **Security housekeeping:** a Stripe `rk_live_` key and the JSearch key were pasted in
-  chat during setup — optional to rotate them.
-- **Email setup (to finish password reset in prod):** create a Resend key, verify
-  rolequill.com, and add the SPF/DKIM records in Cloudflare; set `RESEND_API_KEY` (and
-  optionally `RESEND_FROM`) in the Render dashboard. Until then reset links won't send.
-- **Security housekeeping:** rotate the keys pasted in chat during setup (user handling).
-- **Legal review:** privacy/terms are self-drafted templates — have a professional
-  review if operating at scale or serving EU/UK users.
-- **Future ideas:** SQLite→Postgres + task queue at scale; email-forward assist for
+  chat during earlier setup — user is rotating them.
+- **Legal review:** privacy/terms are self-drafted templates (operator Dominic
+  Pinoteau, Wisconsin law) — have a professional review if operating at scale or
+  serving EU/UK users.
+- **Future ideas:** surface application notes/location as columns (captured + exported,
+  not yet displayed); SQLite→Postgres + task queue at scale; email-forward assist for
   auto reply-tracking; per-source reply-rate on admin.
 
 ## Recent commit trail (newest first)
+manual application entry (Applications page) → query-aggregator timeout split
+(QUERY_TIMEOUT=30 so SerpApi isn't cut off at 12s) + tracking tips moved atop results →
+application-tracking tips (search results + Applications pages) →
+RESEND_FROM/key hardening + email startup diagnostic →
 login rate-limit + password reset (Resend email, single-use tokens) →
 privacy/data-control (policy+terms, account export/delete, resume delete, consent) →
 env-parse crash fix → pin deps + loosen python → JSearch indicator → JSearch v5
