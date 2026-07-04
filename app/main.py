@@ -12,7 +12,7 @@ from werkzeug.utils import secure_filename
 
 import functools
 
-from . import credits, payments
+from . import credits, mailer, payments
 from .auth import login_required
 from .db import get_db
 from .pipeline.resume import analyze_resume, skills_to_json
@@ -472,7 +472,8 @@ def account():
     app_count = db.execute(
         "SELECT COUNT(*) FROM applications WHERE user_id = ?", (g.user["id"],)).fetchone()[0]
     return render_template("account.html", resume_count=resume_count,
-                           search_count=search_count, app_count=app_count)
+                           search_count=search_count, app_count=app_count,
+                           email_on=mailer.is_configured())
 
 
 @bp.route("/account/export")

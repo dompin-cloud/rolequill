@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     free_credits  INTEGER NOT NULL DEFAULT 0,   -- weekly-refilled, capped, non-rollover
     paid_credits  INTEGER NOT NULL DEFAULT 0,   -- purchased, never expire
     free_reset_at TEXT,                          -- last weekly free grant (ISO)
+    twofa_email   INTEGER NOT NULL DEFAULT 0,    -- 1 = require an emailed code at login
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -105,12 +106,37 @@ CREATE TABLE IF NOT EXISTS password_resets (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Emailed one-time codes for two-factor auth. Same single-use, hashed, TTL'd
+-- pattern as password_resets: we store only the SHA-256 of the 6-digit code.
+CREATE TABLE IF NOT EXISTS login_codes (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    code_hash  TEXT NOT NULL,                 -- SHA-256 of the 6-digit code
+    purpose    TEXT NOT NULL DEFAULT 'login', -- 'login' (challenge) | 'enroll' (turn 2FA on)
+    expires_at TEXT NOT NULL,                 -- ISO8601 UTC
+    used_at    TEXT,                          -- set once redeemed (single-use)
+    attempts   INTEGER NOT NULL DEFAULT 0,    -- wrong-guess counter; locks the code out
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- "Remember this device" tokens so 2FA users aren't emailed a code every login.
+-- Cookie holds the raw token; we store only its hash (revocable, expires).
+CREATE TABLE IF NOT EXISTS trusted_devices (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,                 -- ISO8601 UTC
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_jobs_search ON jobs(search_id);
 CREATE INDEX IF NOT EXISTS idx_pwreset_user ON password_resets(user_id);
 CREATE INDEX IF NOT EXISTS idx_searches_user ON searches(user_id);
 CREATE INDEX IF NOT EXISTS idx_resumes_user ON resumes(user_id);
 CREATE INDEX IF NOT EXISTS idx_app_user ON applications(user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_app_user_link ON applications(user_id, apply_link);
+CREATE INDEX IF NOT EXISTS idx_login_codes_user ON login_codes(user_id);
+CREATE INDEX IF NOT EXISTS idx_trusted_user ON trusted_devices(user_id);
 """
 
 
@@ -143,7 +169,8 @@ def _migrate(db):
         db.execute("ALTER TABLE resumes ADD COLUMN profile TEXT")
     for col, ddl in (("free_credits", "INTEGER NOT NULL DEFAULT 0"),
                      ("paid_credits", "INTEGER NOT NULL DEFAULT 0"),
-                     ("free_reset_at", "TEXT")):
+                     ("free_reset_at", "TEXT"),
+                     ("twofa_email", "INTEGER NOT NULL DEFAULT 0")):
         if not _column_exists(db, "users", col):
             db.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")
     if not _column_exists(db, "searches", "credit_source"):

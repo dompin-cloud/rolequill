@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<body style="margin:0;background:#f5f7fb;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1c2733;">
+  <div style="max-width:520px;margin:0 auto;padding:32px 24px;">
+    <h2 style="color:#1F3864;margin:0 0 16px;">Your RoleQuill verification code</h2>
+    <p>Hi{% if name %} {{ name }}{% endif %},</p>
+    {% if purpose == 'enroll' %}
+    <p>Use this code to finish turning on two-factor authentication for your
+      RoleQuill account:</p>
+    {% else %}
+    <p>Use this code to finish logging in to your RoleQuill account:</p>
+    {% endif %}
+    <p style="margin:26px 0;">
+      <span style="display:inline-block;background:#eef2f9;color:#1F3864;
+                   font-size:32px;font-weight:700;letter-spacing:8px;
+                   padding:14px 24px;border-radius:8px;">{{ code }}</span>
+    </p>
+    <p style="color:#6b7785;font-size:13px;">This code expires in
+      <strong>10 minutes</strong>. Don't share it with anyone — RoleQuill will
+      never ask you for it.</p>
+    <p style="color:#6b7785;font-size:13px;">If you didn't try to
+      {{ 'enable two-factor authentication' if purpose == 'enroll' else 'log in' }},
+      you can safely ignore this email and consider changing your password.</p>
+    <hr style="border:none;border-top:1px solid #e3e8ef;margin:24px 0;">
+    <p style="color:#6b7785;font-size:12px;">RoleQuill · automated job search</p>
+  </div>
+</body>
+</html>

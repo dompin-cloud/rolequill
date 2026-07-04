@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Confirm two-factor setup — RoleQuill{% endblock %}
+{% block content %}
+<div class="auth-card">
+  <h2>Confirm two-factor setup</h2>
+  <p class="muted">Enter the 6-digit code we just emailed to
+    <strong>{{ g.user.email }}</strong> to finish turning on two-factor
+    authentication. It expires in 10 minutes.</p>
+  <form method="post">
+    <label>Verification code
+      <input type="text" name="code" required autofocus inputmode="numeric"
+             pattern="[0-9]*" maxlength="6" autocomplete="one-time-code"
+             placeholder="123456">
+    </label>
+    <button class="btn" type="submit">Turn on two-factor</button>
+  </form>
+  <form method="post" action="{{ url_for('auth.twofa_enable') }}">
+    <button class="btn-link" type="submit">Resend code</button>
+  </form>
+  <p class="muted"><a href="{{ url_for('main.account') }}">Cancel</a></p>
+</div>
+{% endblock %}

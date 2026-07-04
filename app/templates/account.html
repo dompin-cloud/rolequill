@@ -23,6 +23,32 @@
   <a class="btn" href="{{ url_for('main.export_data') }}">⬇ Download my data (JSON)</a>
 </section>
 
+<section class="panel">
+  <h3>Two-factor authentication</h3>
+  {% if g.user.twofa_email %}
+    <p>Status: <strong style="color:#2e7d32;">On</strong> — when you log in on a new
+      device we'll email a 6-digit code to <code>{{ g.user.email }}</code>.</p>
+    <form method="post" action="{{ url_for('auth.twofa_disable') }}"
+          onsubmit="return confirm('Turn off two-factor authentication?');">
+      <label>Confirm your password to turn it off
+        <input type="password" name="password" required autocomplete="current-password">
+      </label>
+      <button class="btn btn-danger" type="submit">Turn off two-factor</button>
+    </form>
+  {% else %}
+    <p>Status: <strong>Off</strong>. Add a second step at login — we'll email a
+      one-time code so a stolen password alone can't get into your account.</p>
+    {% if email_on %}
+    <form method="post" action="{{ url_for('auth.twofa_enable') }}">
+      <button class="btn" type="submit">Enable email two-factor</button>
+    </form>
+    {% else %}
+    <p class="muted">Email isn't configured on this server yet, so email-based
+      two-factor can't be enabled right now.</p>
+    {% endif %}
+  {% endif %}
+</section>
+
 <section class="panel danger-zone">
   <h3>Delete your account</h3>
   <p>This permanently erases your account and <strong>all</strong> associated data —

@@ -194,6 +194,11 @@ h4.ok { color: #145222; } h4.warn { color: #8a5a00; }
 .btn-link-danger { background: none; border: 0; color: var(--muted); cursor: pointer;
   font-size: 13px; padding: 0; }
 .btn-link-danger:hover { color: #7a1020; text-decoration: underline; }
+.btn-link { background: none; border: 0; color: var(--blue); cursor: pointer;
+  font-size: 13px; padding: 0; }
+.btn-link:hover { text-decoration: underline; }
+.checkbox-row { display: flex; align-items: center; gap: 8px; font-weight: normal; }
+.checkbox-row input { width: auto; margin: 0; }
 .danger-zone { border-color: var(--red); }
 .danger-zone h3 { color: #7a1020; }
 .btn-danger { background: #b42318; }

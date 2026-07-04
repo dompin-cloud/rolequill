@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Verify it's you — RoleQuill{% endblock %}
+{% block content %}
+<div class="auth-card">
+  <h2>Enter your code</h2>
+  <p class="muted">We emailed a 6-digit code to your inbox. It expires in 10 minutes.</p>
+  <form method="post">
+    <label>Verification code
+      <input type="text" name="code" required autofocus inputmode="numeric"
+             pattern="[0-9]*" maxlength="6" autocomplete="one-time-code"
+             placeholder="123456">
+    </label>
+    <label class="checkbox-row">
+      <input type="checkbox" name="remember" value="1">
+      Trust this device for 30 days
+    </label>
+    <button class="btn" type="submit">Verify &amp; log in</button>
+  </form>
+  <form method="post" action="{{ url_for('auth.verify_resend') }}">
+    <button class="btn-link" type="submit">Didn't get it? Resend code</button>
+  </form>
+  <p class="muted"><a href="{{ url_for('auth.logout') }}">Cancel</a></p>
+</div>
+{% endblock %}
