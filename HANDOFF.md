@@ -138,6 +138,39 @@ Numeric env vars are parsed with `_int_env` (blank/bad value → default, never 
   not yet displayed); SQLite→Postgres + task queue at scale; email-forward assist for
   auto reply-tracking; per-source reply-rate on admin.
 
+## Global expansion (future planning — not started)
+Making RoleQuill viable for users outside the US, ordered by what actually blocks it.
+Two hard gates, then polish. Nothing here is built yet.
+- **GATE 1 — Job-data coverage (the product gate).** Discovery is US-biased today:
+  `companies.py` tokens are mostly US tech employers; `google_jobs.py` only does
+  `f"{query} {location}"` (does NOT pass SerpApi `gl`/`hl` locale params); `jsearch.py`
+  accepts a `country` param but the UI never collects the user's country to feed it.
+  Result: thin/US-shaped results abroad. **Fix:** collect user country/region, thread it
+  to `jsearch` (`country`) and `google_jobs` (`gl`/`hl`/`location`), expand `companies.py`
+  with regional employers, handle non-English postings in `lang.py`/`keywords.py`.
+  Highest leverage, pure code — the recommended first step whenever this starts.
+- **GATE 2 — Legal / data protection (the compliance gate).** Serving EU/UK users triggers
+  GDPR/UK GDPR (also PIPEDA, LGPD, etc.); resumes = personal data. Foundation is decent
+  (`/account/export` + `/account/delete` = access+erasure, signup consent). Missing:
+  professionally reviewed privacy policy/DPA (current one is self-drafted, Wisconsin law),
+  cookie/consent basis, lawful-basis docs, possibly an EU representative. Real gate for EU.
+- **Payments & tax (not a launch blocker).** `payments.py` hardcodes `currency:"usd"`;
+  intl users can pay USD early. The hard part is tax on digital goods (EU VAT, UK VAT, GST).
+  Pragmatic solo-operator move: switch to a **Merchant-of-Record** (Paddle / Lemon Squeezy)
+  so they're seller-of-record and file global tax for you, instead of raw Stripe.
+- **Localization / i18n (defer).** Templates are English-only, no framework. English-first
+  global launch is fine for most markets; add Flask-Babel + translations + currency/date
+  formatting (+ RTL) only once traction justifies it.
+- **Infra ceiling (scale, not launch).** Single Render worker, single US region, SQLite +
+  in-memory rate-limiting (`-w 1` assumption). Global = latency + can't add workers/regions
+  without Postgres + Redis-backed throttling. The wall you hit *with* success.
+- **Sanctions:** can't serve OFAC-embargoed countries — a signup-country block is cheap
+  insurance.
+- **2FA is already global-friendly:** email-OTP works anywhere email works, no per-country
+  phone deliverability/cost. (SMS 2FA is where global would've gotten expensive — avoided.)
+- **Recommended MVP sequence:** (a) locale-aware search, (b) Merchant-of-Record billing,
+  (c) professional privacy/terms + consent banner. Defer i18n + multi-region.
+
 ## Recent commit trail (newest first)
 opt-in email 2FA (one-time login codes: login_codes + trusted_devices tables,
 users.twofa_email flag, /auth/verify + enroll/disable, "trust this device") →
