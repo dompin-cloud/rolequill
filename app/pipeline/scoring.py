@@ -1,4 +1,5 @@
 """Match scoring, ATS keyword scoring, and gap analysis."""
+import math
 import re
 
 from . import geo, lang
@@ -144,19 +145,31 @@ def skill_alignment(profile_terms, jd_low: str) -> int:
 
 
 def score_job(job, *, resume_skills, title_query, desired_geo, min_pay, work_type,
-              spoken_languages, profile_terms=()):
+              spoken_languages, profile_terms=(), skill_weights=None, jd_skills=None):
     jd_text = job.description + " " + job.role
     jd_low = jd_text.lower()
-    jd_skills = extract_skills(jd_text)
+    if jd_skills is None:
+        jd_skills = extract_skills(jd_text)
+    # rarity weight per taxonomy skill: ubiquitous skills (matched by nearly every
+    # posting) count for little, distinctive skills count near 1. Falls back to a
+    # flat 1.0 when no corpus weights are supplied.
+    weights = skill_weights or {}
+    skill_wt = lambda s: weights.get(s, 1.0)
     job_low, job_high = parse_salary(job.salary)
     has_title = bool((title_query or "").strip())
 
     t_rel = title_relevance(title_query, job.role)
-    tax_count = len(resume_skills & jd_skills)
-    tax_overlap = (tax_count / len(jd_skills)) if jd_skills else 0.5
+    matched_skills = resume_skills & jd_skills
+    tax_count = len(matched_skills)
+    # weighted evidence of overlap: sum the rarity weights of the matched skills and
+    # saturate. Matching two ubiquitous skills barely moves this; matching a few
+    # distinctive ones (LLM Integration, RAG, n8n…) scores high. This stops
+    # off-target roles that only trip common skills from ranking like real matches.
+    matched_wt = sum(skill_wt(s) for s in matched_skills)
+    tax_overlap = 1.0 - math.exp(-matched_wt / 1.5)
     term_hits = skill_alignment(profile_terms, jd_low)
     term_score = min(1.0, term_hits / 8.0)
-    # blend JD keyword coverage with alignment to the candidate's stated profile
+    # blend distinctive JD-skill overlap with alignment to the candidate's profile
     skill_component = 0.6 * tax_overlap + 0.4 * term_score
 
     p_fit = pay_fit(min_pay, job_low, job_high)
@@ -183,8 +196,9 @@ def score_job(job, *, resume_skills, title_query, desired_geo, min_pay, work_typ
     job.ats_score = ats_score(resume_skills, jd_skills, t_rel)
     job.relevance_hits = tax_count + term_hits
 
-    matched = sorted(resume_skills & jd_skills)
-    missing = sorted(jd_skills - resume_skills)
+    # surface the most distinctive overlaps and gaps first (rarest skills lead)
+    matched = sorted(matched_skills, key=lambda s: (-skill_wt(s), s))
+    missing = sorted(jd_skills - resume_skills, key=lambda s: (-skill_wt(s), s))
     missing_str = ", ".join(missing) if missing else "None — strong keyword coverage"
     if unmet:
         missing_str += f"  |  Languages required: {', '.join(unmet)}"

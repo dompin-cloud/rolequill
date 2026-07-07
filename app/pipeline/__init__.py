@@ -1,14 +1,18 @@
 """End-to-end search pipeline: fetch -> filter -> score -> rank."""
+import math
 import re
 import time
+from collections import Counter
 
 from . import geo, lang
 from ..providers import fetch_all, fetch_jsearch_source, fetch_query_sources
 from ..providers.base import SearchTimeout
 from .filters import classify
+from .keywords import extract_skills
 from .scoring import geo_verdict, score_job, title_relevance, work_type_ok
 
 RESULT_LIMIT = 40
+MAX_PER_COMPANY = 3       # cap listings per employer so one big ATS board can't flood
 MATCH_FLOOR = 45          # drop weak matches below this score
 MIN_TITLE_OVERLAP = 0.34  # when a title query is given, require some token overlap
 SKILL_FLOOR = 2           # with no title, require >=N resume-skill/keyword overlaps
@@ -39,6 +43,40 @@ def _norm_role(r):
 def dedup_key(job):
     """Cross-source key so the same role from different boards collapses to one."""
     return (_norm_company(job.company), _norm_role(job.role))
+
+
+def _skill_weights(jd_skill_sets):
+    """IDF-style rarity weights in ~(0,1] over the current candidate pool: a skill
+    present in almost every posting scores ~0, a skill in only one scores near 1.
+    Lets scoring reward distinctive overlap and discount ubiquitous skills."""
+    n = len(jd_skill_sets)
+    if not n:
+        return {}
+    df = Counter()
+    for skills in jd_skill_sets:
+        df.update(skills)
+    denom = math.log(n + 1)
+    return {s: math.log((n + 1) / (c + 0.5)) / denom for s, c in df.items()}
+
+
+def _cap_per_company(scored, limit, per_company):
+    """Keep at most `per_company` listings per employer (best-first), backfilling
+    from the overflow only if capping would otherwise leave us short of `limit`."""
+    kept, overflow, counts = [], [], Counter()
+    for job in scored:                       # scored is already best-first
+        c = _norm_company(job.company)
+        if counts[c] < per_company:
+            kept.append(job)
+            counts[c] += 1
+            if len(kept) >= limit:
+                return kept[:limit]
+        else:
+            overflow.append(job)
+    for job in overflow:                     # short of limit — top up with the rest
+        if len(kept) >= limit:
+            break
+        kept.append(job)
+    return kept[:limit]
 
 
 def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
@@ -98,8 +136,9 @@ def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
     if progress:
         progress(100, 100, f"Filtering & scoring {len(raw)} postings…")
 
+    # ---- pass 1: dedupe + hard gates; stash JD skills for the corpus weighting ----
     seen = set()
-    scored = []
+    survivors = []
     total = len(raw)
     for idx, job in enumerate(raw):
         if idx % 250 == 0:
@@ -137,9 +176,19 @@ def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
                 continue
 
         job.flags = reasons
+        job._jd_skills = extract_skills(job.description + " " + job.role)
+        survivors.append(job)
+
+    # rarity weights across the survivors so ubiquitous skills stop inflating scores
+    weights = _skill_weights([j._jd_skills for j in survivors])
+
+    # ---- pass 2: score with the corpus weights + apply the skill/score floors ----
+    scored = []
+    for job in survivors:
         score_job(job, resume_skills=resume_skills, title_query=title_query,
                   desired_geo=desired_geo, min_pay=min_pay, work_type=work_type,
-                  spoken_languages=spoken_languages, profile_terms=profile_terms)
+                  spoken_languages=spoken_languages, profile_terms=profile_terms,
+                  skill_weights=weights, jd_skills=job._jd_skills)
         # skills-first gate: with no title, require real overlap with the resume
         if not has_title and job.relevance_hits < SKILL_FLOOR:
             stats["dropped_relevance"] += 1
@@ -150,6 +199,6 @@ def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
         scored.append(job)
 
     scored.sort(key=lambda j: j.match_score, reverse=True)
-    ranked = scored[:RESULT_LIMIT]
+    ranked = _cap_per_company(scored, RESULT_LIMIT, MAX_PER_COMPANY)
     stats["kept"] = len(ranked)
     return ranked, stats
