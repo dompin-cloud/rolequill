@@ -4,6 +4,7 @@
 <div class="auth-card">
   <h2>Create your account</h2>
   <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>Full name<input type="text" name="full_name" placeholder="Used to title your Excel report"></label>
     <label>Email<input type="email" name="email" required></label>
     <label>Password<input type="password" name="password" required minlength="8" placeholder="At least 8 characters"></label>

@@ -30,6 +30,7 @@
       device we'll email a 6-digit code to <code>{{ g.user.email }}</code>.</p>
     <form method="post" action="{{ url_for('auth.twofa_disable') }}"
           onsubmit="return confirm('Turn off two-factor authentication?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label>Confirm your password to turn it off
         <input type="password" name="password" required autocomplete="current-password">
       </label>
@@ -40,6 +41,7 @@
       one-time code so a stolen password alone can't get into your account.</p>
     {% if email_on %}
     <form method="post" action="{{ url_for('auth.twofa_enable') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="btn" type="submit">Enable email two-factor</button>
     </form>
     {% else %}
@@ -56,6 +58,7 @@
     credit history. Purchased credits are forfeited and this cannot be undone.</p>
   <form method="post" action="{{ url_for('main.delete_account') }}"
         onsubmit="return confirm('Permanently delete your account and all data? This cannot be undone.');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>Type your email (<code>{{ g.user.email }}</code>) to confirm
       <input type="email" name="confirm_email" autocomplete="off" required
              placeholder="{{ g.user.email }}">

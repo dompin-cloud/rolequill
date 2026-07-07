@@ -45,6 +45,7 @@ rate updates automatically.</p>
         <td class="nowrap">{{ (a.applied_at or a.created_at)[:10] }}</td>
         <td>
           <form method="post" action="{{ url_for('main.update_application', app_id=a.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <select name="status" onchange="this.form.submit()" class="status-sel status-{{ a.status }}">
               {% for s in statuses %}
                 <option value="{{ s }}" {% if s == a.status %}selected{% endif %}>{{ s|capitalize }}</option>
@@ -55,6 +56,7 @@ rate updates automatically.</p>
         <td>
           <form method="post" action="{{ url_for('main.delete_application', app_id=a.id) }}"
                 onsubmit="return confirm('Remove this application?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="link-btn" type="submit" title="Remove">✕</button>
           </form>
         </td>

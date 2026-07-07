@@ -7,6 +7,7 @@
     <strong>{{ g.user.email }}</strong> to finish turning on two-factor
     authentication. It expires in 10 minutes.</p>
   <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>Verification code
       <input type="text" name="code" required autofocus inputmode="numeric"
              pattern="[0-9]*" maxlength="6" autocomplete="one-time-code"
@@ -15,6 +16,7 @@
     <button class="btn" type="submit">Turn on two-factor</button>
   </form>
   <form method="post" action="{{ url_for('auth.twofa_enable') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button class="btn-link" type="submit">Resend code</button>
   </form>
   <p class="muted"><a href="{{ url_for('main.account') }}">Cancel</a></p>

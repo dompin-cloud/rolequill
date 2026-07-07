@@ -30,6 +30,7 @@
       <div class="pack-price">${{ p.price_usd }}</div>
       <div class="pack-per muted">{{ p.per_search }} / search</div>
       <form method="post" action="{{ url_for('main.buy_credits', pack_id=p.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn" type="submit">{{ 'Buy' if live else 'Get (test)' }}</button>
       </form>
     </div>

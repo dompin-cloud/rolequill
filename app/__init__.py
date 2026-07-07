@@ -56,6 +56,12 @@ def create_app(config_object=Config):
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
 
+    # CSRF protection for all state-changing POSTs. The Stripe webhook is exempt:
+    # it's an external call with no session, authenticated by signature instead.
+    from . import csrf
+    csrf.init_app(app)
+    csrf.csrf_exempt("main.stripe_webhook")
+
     import json as _json
 
     @app.template_filter("from_json")

@@ -5,6 +5,7 @@
   <h2>Enter your code</h2>
   <p class="muted">We emailed a 6-digit code to your inbox. It expires in 10 minutes.</p>
   <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>Verification code
       <input type="text" name="code" required autofocus inputmode="numeric"
              pattern="[0-9]*" maxlength="6" autocomplete="one-time-code"
@@ -17,6 +18,7 @@
     <button class="btn" type="submit">Verify &amp; log in</button>
   </form>
   <form method="post" action="{{ url_for('auth.verify_resend') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button class="btn-link" type="submit">Didn't get it? Resend code</button>
   </form>
   <p class="muted"><a href="{{ url_for('auth.logout') }}">Cancel</a></p>

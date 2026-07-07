@@ -4,6 +4,7 @@
 <div class="auth-card">
   <h2>Set a new password</h2>
   <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>New password
       <input type="password" name="password" required minlength="8"
              placeholder="At least 8 characters" autofocus>
