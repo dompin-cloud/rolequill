@@ -56,6 +56,11 @@ def _int_env(name, default):
 
 
 _HTTPS = os.environ.get("ROLEQUILL_HTTPS", "0") == "1"
+# Optional cookie domain — set to e.g. ".rolequill.com" so auth cookies (session +
+# the 2FA "remember this device" cookie) span BOTH the apex and www hosts. A host-only
+# cookie set on rolequill.com is NOT sent to www.rolequill.com, which silently breaks
+# "remember this device" for users who bounce between the two. Leave unset = host-only.
+_COOKIE_DOMAIN = (os.environ.get("ROLEQUILL_COOKIE_DOMAIN") or "").strip() or None
 
 
 class Config:
@@ -69,6 +74,8 @@ class Config:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = _HTTPS
+    SESSION_COOKIE_DOMAIN = _COOKIE_DOMAIN   # None = host-only (Flask default)
+    COOKIE_DOMAIN = _COOKIE_DOMAIN           # reused for the 2FA remember-device cookie
     PREFERRED_URL_SCHEME = "https" if _HTTPS else "http"
     # set when running behind a reverse proxy / Cloudflare so url_for builds https
     BEHIND_PROXY = os.environ.get("ROLEQUILL_BEHIND_PROXY", "0") == "1"

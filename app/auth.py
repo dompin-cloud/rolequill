@@ -80,6 +80,15 @@ def _device_trusted(db, user_id):
                 > datetime.now(timezone.utc))
 
 
+def _set_trusted_cookie(resp, tok):
+    """Set the trusted-device cookie (shared by first issue and sliding renewal).
+    Honors COOKIE_DOMAIN so the cookie can span apex + www when configured."""
+    resp.set_cookie(TRUSTED_COOKIE, tok, max_age=int(TRUSTED_TTL.total_seconds()),
+                    httponly=True, samesite="Lax",
+                    secure=current_app.config.get("SESSION_COOKIE_SECURE", False),
+                    domain=current_app.config.get("COOKIE_DOMAIN"))
+
+
 def _remember_device(resp, db, user_id):
     """Issue a trusted-device token, store its hash, and set the cookie on `resp`."""
     tok = secrets.token_urlsafe(32)
@@ -87,9 +96,22 @@ def _remember_device(resp, db, user_id):
     db.execute("INSERT INTO trusted_devices (user_id, token_hash, expires_at) VALUES (?,?,?)",
                (user_id, _hash_token(tok), expires.isoformat()))
     db.commit()
-    resp.set_cookie(TRUSTED_COOKIE, tok, max_age=int(TRUSTED_TTL.total_seconds()),
-                    httponly=True, samesite="Lax",
-                    secure=current_app.config.get("SESSION_COOKIE_SECURE", False))
+    _set_trusted_cookie(resp, tok)
+
+
+def _refresh_device(resp, db, user_id):
+    """Slide the trusted-device window: extend the stored expiry and reissue the
+    cookie so an actively-used device stays trusted for a rolling 30 days rather
+    than expiring 30 days after it was first trusted."""
+    tok = request.cookies.get(TRUSTED_COOKIE)
+    if not tok:
+        return
+    expires = datetime.now(timezone.utc) + TRUSTED_TTL
+    db.execute("UPDATE trusted_devices SET expires_at = ? "
+               "WHERE token_hash = ? AND user_id = ?",
+               (expires.isoformat(), _hash_token(tok), user_id))
+    db.commit()
+    _set_trusted_cookie(resp, tok)
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -192,14 +214,18 @@ def login():
             ratelimit.clear(key_user)          # good login clears this account's counter
             # Second factor: if the account has email 2FA on and this browser isn't a
             # remembered device, hold the login as "pending" and challenge for a code.
-            if user["twofa_email"] and not _device_trusted(db, user["id"]):
+            trusted = bool(user["twofa_email"]) and _device_trusted(db, user["id"])
+            if user["twofa_email"] and not trusted:
                 _issue_code(db, user, "login")
                 session.clear()
                 session["pending_2fa_user"] = user["id"]
                 return redirect(url_for("auth.verify"))
             session.clear()
             session["user_id"] = user["id"]
-            return redirect(url_for("main.dashboard"))
+            resp = redirect(url_for("main.dashboard"))
+            if trusted:
+                _refresh_device(resp, db, user["id"])   # slide the 30-day window
+            return resp
     return render_template("auth/login.html")
 
 

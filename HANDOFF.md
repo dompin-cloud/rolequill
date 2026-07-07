@@ -64,11 +64,20 @@ Title is **optional** (blank = skills-first).
   `/auth/2fa/confirm`) sends a code first so a dead inbox can't self-lockout; disable
   (`/auth/2fa/disable`) requires the current password. **"Trust this device"** (30 days)
   = a random token whose SHA-256 is stored in `trusted_devices`, raw token in the `rq_td`
-  cookie; skips the code on that browser. Password reset revokes trusted devices + pending
-  codes. **Recovery is email-bound** (OTP + reset both go to the inbox) — a user who loses
+  cookie; skips the code on that browser. **Sliding renewal**: each trusted login extends
+  the expiry + reissues the cookie, so an active device stays trusted for a rolling 30 days.
+  The cookie honors `COOKIE_DOMAIN` — **set `ROLEQUILL_COOKIE_DOMAIN=.rolequill.com` in Render**
+  so it (and the session cookie) span apex + www; a host-only cookie set on `rolequill.com`
+  is NOT sent to `www.rolequill.com`, which was the likely cause of "remember me" not sticking.
+  Password reset revokes trusted devices + pending codes. **Recovery is email-bound** (OTP +
+  reset both go to the inbox) — a user who loses
   email access is locked out; escape hatch is `UPDATE users SET twofa_email=0 WHERE email=?`
   in the DB. Needs `RESEND_API_KEY` set (the Enable button hides itself if email is off).
   Backup one-time recovery codes are a sensible phase-2 add.
+- **CSRF protection** (`app/csrf.py`, stdlib-only, no Flask-WTF): per-session token, validated
+  in a `before_request` hook (constant-time compare), rendered into every POST form via the
+  `{{ csrf_token() }}` helper. Stripe webhook is exempt (session-less, signature-verified).
+  Defense-in-depth atop the SameSite=Lax session cookie.
 - **Credits** (`credits.py`): freemium + pay-as-you-go. 3 free on signup, +1/week
   (cap 2), purchased never expire. Auto-refund on: 0 results, 120s timeout, and
   restart-orphaned searches (startup `reconcile_orphans`). Packs: Starter 5/$5,
@@ -101,6 +110,7 @@ Title is **optional** (blank = skills-first).
 ## Env vars (all set in Render dashboard; local dev uses a gitignored `.env`)
 `ROLEQUILL_SECRET`, `ROLEQUILL_DEBUG=0`, `ROLEQUILL_HTTPS=1`,
 `ROLEQUILL_BEHIND_PROXY=1`, `ROLEQUILL_DATA_DIR=/var/data`,
+optional `ROLEQUILL_COOKIE_DOMAIN=.rolequill.com` (span apex+www for session + 2FA cookies),
 `ROLEQUILL_PAYMENTS_MODE=stripe`, `STRIPE_SECRET_KEY` (live), `STRIPE_PUBLISHABLE_KEY`
 (live), `STRIPE_WEBHOOK_SECRET`, `SERPAPI_KEY`, `JSEARCH_KEY`,
 `JOBSEARCH_MAX_COMPANIES` (currently 25), `JOBSEARCH_WORKERS=6`, `ROLEQUILL_ADMIN_EMAIL`,
@@ -172,6 +182,10 @@ Two hard gates, then polish. Nothing here is built yet.
   (c) professional privacy/terms + consent banner. Defer i18n + multi-region.
 
 ## Recent commit trail (newest first)
+security/quality pass: CSRF tokens on all POSTs (app/csrf.py) → 2FA remember-device
+sliding renewal + configurable cookie domain (apex/www) → same-host redirect guard +
+charge-before-insert ordering fix → result quality: per-company cap (3) + IDF skill
+weighting (two-pass scoring so ubiquitous skills stop inflating off-target roles) →
 opt-in email 2FA (one-time login codes: login_codes + trusted_devices tables,
 users.twofa_email flag, /auth/verify + enroll/disable, "trust this device") →
 manual application entry (Applications page) → query-aggregator timeout split

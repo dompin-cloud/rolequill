@@ -3,6 +3,7 @@ import json
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlparse
 
 from flask import (
     Blueprint, Response, abort, current_app, flash, g, jsonify, redirect,
@@ -113,6 +114,15 @@ def upload_resume():
     return redirect(url_for("main.dashboard"))
 
 
+def _redirect_back(fallback):
+    """Redirect to the page the user came from, but only if it's on this host —
+    stops an attacker-crafted Referer from bouncing the user off-site."""
+    ref = request.referrer
+    if ref and urlparse(ref).netloc == request.host:
+        return redirect(ref)
+    return redirect(fallback)
+
+
 def _safe_unlink(path):
     """Best-effort delete of a file on disk; never raises."""
     try:
@@ -153,25 +163,31 @@ def new_search():
     min_pay = request.form.get("min_pay", "").replace(",", "").replace("$", "").strip()
     min_pay = int(min_pay) if min_pay.isdigit() else None
 
-    # spend a credit (free first, then paid); block if out
-    source = credits.charge_search(db, g.user["id"])
-    if source is None:
-        flash("You're out of search credits. Grab a credit pack to keep searching — "
-              "or your free credit refills weekly.", "error")
-        return redirect(url_for("main.credits"))
-
+    # Create the search row BEFORE charging so a spent credit is always tied to a
+    # row that startup orphan-reconcile can refund if the run never completes.
+    # credit_source is filled in right after the charge succeeds below.
     cur = db.execute(
         "INSERT INTO searches (user_id, resume_id, title_query, location, min_pay, "
-        "work_type, languages, credit_source, status) VALUES (?,?,?,?,?,?,?,?, 'pending')",
+        "work_type, languages, status) VALUES (?,?,?,?,?,?,?, 'pending')",
         (g.user["id"], resume_id,
          (request.form.get("title_query") or "").strip(),
          (request.form.get("location") or "").strip(),
          min_pay,
          request.form.get("work_type") or "any",
-         (request.form.get("languages") or "").strip(),
-         source))
-    db.commit()
+         (request.form.get("languages") or "").strip()))
     search_id = cur.lastrowid
+    db.commit()
+
+    # spend a credit (free first, then paid); block (and drop the row) if out
+    source = credits.charge_search(db, g.user["id"])
+    if source is None:
+        db.execute("DELETE FROM searches WHERE id = ?", (search_id,))
+        db.commit()
+        flash("You're out of search credits. Grab a credit pack to keep searching — "
+              "or your free credit refills weekly.", "error")
+        return redirect(url_for("main.credits"))
+    db.execute("UPDATE searches SET credit_source = ? WHERE id = ?", (source, search_id))
+    db.commit()
 
     start_search(current_app._get_current_object(), search_id)
     return redirect(url_for("main.view_search", search_id=search_id))
@@ -370,7 +386,7 @@ def add_application():
     db.commit()
     flash("Marked as applied — track replies on your Applications page."
           if cur.rowcount else "Already in your applications.", "success")
-    return redirect(request.referrer or url_for("main.applications"))
+    return _redirect_back(url_for("main.applications"))
 
 
 @bp.route("/applications/add-manual", methods=("POST",))
