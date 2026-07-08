@@ -160,9 +160,20 @@ Numeric env vars are parsed with `_int_env` (blank/bad value → default, never 
   credits `relevance_hits` so field-relevant non-tech jobs clear the skills-first gate;
   cross-field jobs (nurse resume vs tech role) match neither path and stay filtered. Also
   fixed the "Title closely matches" boilerplate (only shows when a title was actually
-  typed). **B3 (next)**: industry-segmented company rosters for real non-tech ATS
-  coverage (large content effort) — until then non-tech jobs come only from Google/JSearch,
-  not the ATS boards.
+  typed). **B3 DONE** — the ATS roster (`providers/companies.py`) went from 137 all-tech
+  to **194 verified companies tagged by industry** (tech 74 / finance 31 / consumer 27 /
+  health 17 / media 17 / logistics 14 / education 14), all validated live against the
+  Greenhouse/Lever/Ashby APIs at build time. **Field-aware selection** (`companies.
+  select_tokens` + `industries_for`, wired through `fetch_all(industries=…)` from the
+  resume's detected roles) scans boards matching the candidate's field first, so the
+  per-provider cap (`JOBSEARCH_MAX_COMPANIES`) lands on relevant boards even when low; a
+  no-field search interleaves across all industries. **Coverage caveat:** these three
+  ATSes are tech/startup-skewed, so non-tech coverage is ADJACENT-industry (fintech,
+  healthtech, consumer/DTC, media, edtech, logistics-tech) — NOT hospital nursing, K-12,
+  or skilled trades, whose employers use other ATSes (Workday/iCIMS) and are surfaced via
+  the Google Jobs/JSearch aggregators. Roster is easily extended: add `(token, industry)`
+  rows (unknown tokens return zero jobs, harmless). Adding new provider integrations
+  (Workday/iCIMS) would be the next real lever for deep non-tech ATS coverage.
 
 ## Global expansion (future planning — not started)
 Making RoleQuill viable for users outside the US, ordered by what actually blocks it.
@@ -198,6 +209,9 @@ Two hard gates, then polish. Nothing here is built yet.
   (c) professional privacy/terms + consent banner. Defer i18n + multi-region.
 
 ## Recent commit trail (newest first)
+industry generalization B3: 194 verified industry-tagged ATS companies (from 137
+all-tech) + field-aware roster selection (companies.select_tokens / industries_for →
+fetch_all) so non-tech resumes scan relevant boards →
 industry generalization B2: resume-agnostic scoring (scoring._role_match — field
 role-match path via max(tax_path, role_path)) so non-tech jobs score + clear the gate;
 also fixes the "Title closely matches" boilerplate →

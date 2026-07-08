@@ -6,7 +6,7 @@ import requests
 
 from .ashby import AshbyProvider
 from .base import SearchTimeout
-from .companies import REGISTRY
+from .companies import REGISTRY, select_tokens
 from .google_jobs import GoogleJobsProvider
 from .greenhouse import GreenhouseProvider
 from .jsearch import JSearchProvider
@@ -28,20 +28,22 @@ def _make_session():
 
 
 def fetch_all(max_per_provider=60, workers=16, timeout=12, progress=None,
-              deadline=None):
+              deadline=None, industries=None):
     """Fan out across every provider/company and return a flat list of JobPosting.
 
-    `progress(done, total, msg)` is an optional callback for live status updates.
-    `deadline` is a time.monotonic() value; if exceeded mid-scan, raises SearchTimeout
-    (queued board fetches are cancelled).
+    `industries` (a set of industry tags from the candidate's resume) drives
+    field-aware company selection so the limited per-provider budget lands on boards
+    relevant to their field. `progress(done, total, msg)` is an optional callback for
+    live status. `deadline` is a time.monotonic() value; exceeding it mid-scan raises
+    SearchTimeout (queued board fetches are cancelled).
     """
     session = _make_session()
     providers = {name: cls(session, timeout=timeout)
                  for name, cls in PROVIDER_CLASSES.items()}
 
     tasks = []  # (provider_name, token)
-    for name, tokens in REGISTRY.items():
-        for token in tokens[:max_per_provider]:
+    for name in PROVIDER_CLASSES:
+        for token in select_tokens(name, industries, max_per_provider):
             tasks.append((name, token.strip()))
 
     total = len(tasks)

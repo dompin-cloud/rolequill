@@ -7,6 +7,7 @@ from collections import Counter
 from . import geo, lang
 from ..providers import fetch_all, fetch_jsearch_source, fetch_query_sources
 from ..providers.base import SearchTimeout
+from ..providers.companies import industries_for
 from .filters import classify
 from .keywords import extract_skills
 from .scoring import geo_verdict, score_job, title_relevance, work_type_ok
@@ -98,8 +99,11 @@ def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
     spoken_languages = lang.parse_spoken(criteria.get("languages") or "")
     desired_geo = geo.desired_regions(location)
 
+    # field-aware roster: scan companies matching the candidate's detected field first
+    industries = industries_for(resume_roles)
     raw = fetch_all(max_per_provider=max_per_provider, workers=workers,
-                    timeout=timeout, progress=progress, deadline=deadline)
+                    timeout=timeout, progress=progress, deadline=deadline,
+                    industries=industries)
 
     # query-based sources (Google Jobs / JSearch) — these are industry-agnostic, so
     # they're how a non-tech resume finds relevant work (the ATS roster is tech-only).
