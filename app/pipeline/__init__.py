@@ -81,8 +81,8 @@ def _cap_per_company(scored, limit, per_company):
 
 def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
                timeout, query_timeout=None, progress=None, profile_terms=(),
-               resume_query="", serpapi_key=None, google_pages=1, jsearch_key=None,
-               jsearch_pages=1, time_limit=None):
+               resume_query="", resume_roles=(), serpapi_key=None, google_pages=1,
+               jsearch_key=None, jsearch_pages=1, time_limit=None):
     """criteria: title_query, location, min_pay, work_type, languages.
     Returns (ranked_jobs, stats). Raises SearchTimeout if it exceeds time_limit secs."""
     deadline = (time.monotonic() + time_limit) if time_limit else None
@@ -190,7 +190,8 @@ def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
         score_job(job, resume_skills=resume_skills, title_query=title_query,
                   desired_geo=desired_geo, min_pay=min_pay, work_type=work_type,
                   spoken_languages=spoken_languages, profile_terms=profile_terms,
-                  skill_weights=weights, jd_skills=job._jd_skills)
+                  resume_roles=resume_roles, skill_weights=weights,
+                  jd_skills=job._jd_skills)
         # skills-first gate: with no title, require real overlap with the resume
         if not has_title and job.relevance_hits < SKILL_FLOOR:
             stats["dropped_relevance"] += 1

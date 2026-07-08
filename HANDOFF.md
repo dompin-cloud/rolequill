@@ -152,11 +152,17 @@ Numeric env vars are parsed with `_int_env` (blank/bad value → default, never 
   software/AI/SaaS) hardcode a tech universe; the resume only personalizes ranking.
   Plan (owner chose to generalize): **B1 DONE** — aggregator query (Google/JSearch) is
   now resume-driven via `profile.detect_roles`/`search_query` (field-agnostic occupation
-  detection), so a nurse/accountant/chef resume searches its actual field. **B2 (next)**:
-  resume-agnostic scoring so non-tech jobs survive the skills-first gate (`SKILL_FLOOR`)
-  and rank on raw résumé-term overlap when the tech taxonomy finds nothing — without it,
-  B1's non-tech results can still be filtered out by scoring. **B3**: industry-segmented
-  company rosters for real non-tech ATS coverage (large content effort).
+  detection), so a nurse/accountant/chef resume searches its actual field. **B2 DONE** —
+  resume-agnostic scoring (`scoring._role_match`): a field-agnostic role-match path
+  (does the resume's occupation head-noun appear in the JD title/body?) runs alongside
+  the tech-taxonomy path, and `skill_component = max(tax_path, role_path)` so tech scoring
+  never regresses while non-tech jobs score on role + resume-term overlap. A role match
+  credits `relevance_hits` so field-relevant non-tech jobs clear the skills-first gate;
+  cross-field jobs (nurse resume vs tech role) match neither path and stay filtered. Also
+  fixed the "Title closely matches" boilerplate (only shows when a title was actually
+  typed). **B3 (next)**: industry-segmented company rosters for real non-tech ATS
+  coverage (large content effort) — until then non-tech jobs come only from Google/JSearch,
+  not the ATS boards.
 
 ## Global expansion (future planning — not started)
 Making RoleQuill viable for users outside the US, ordered by what actually blocks it.
@@ -192,6 +198,9 @@ Two hard gates, then polish. Nothing here is built yet.
   (c) professional privacy/terms + consent banner. Defer i18n + multi-region.
 
 ## Recent commit trail (newest first)
+industry generalization B2: resume-agnostic scoring (scoring._role_match — field
+role-match path via max(tax_path, role_path)) so non-tech jobs score + clear the gate;
+also fixes the "Title closely matches" boilerplate →
 industry generalization B1: resume-driven aggregator query (profile.detect_roles +
 search_query) so non-tech resumes search their real field via Google Jobs/JSearch →
 security/quality pass: CSRF tokens on all POSTs (app/csrf.py) → 2FA remember-device

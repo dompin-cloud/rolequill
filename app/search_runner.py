@@ -8,7 +8,7 @@ from . import credits
 from .db import standalone_connection
 from .pipeline import run_search
 from .pipeline.excel_export import build_workbook, post_status
-from .pipeline.profile import search_query
+from .pipeline.profile import detect_roles, search_query
 from .pipeline.report import build_report
 from .providers.base import SearchTimeout
 
@@ -51,6 +51,9 @@ def _run(app, search_id):
         # detected occupation. Computed from the stored resume text so it also applies
         # retroactively to resumes uploaded before role detection existed.
         resume_query = search_query(resume["text"], profile) if resume else ""
+        # detected occupation(s) — used for field-agnostic scoring so non-tech jobs
+        # rank on role match (stored on new uploads; derived from text retroactively).
+        resume_roles = (profile.get("roles") or detect_roles(resume["text"])) if resume else []
 
         _set(conn, search_id, status="running",
              progress="Starting scan across public ATS boards…")
@@ -74,6 +77,7 @@ def _run(app, search_id):
             progress=progress,
             profile_terms=profile_terms,
             resume_query=resume_query,
+            resume_roles=resume_roles,
             serpapi_key=cfg.get("SERPAPI_KEY"),
             google_pages=cfg.get("GOOGLE_JOBS_PAGES", 1),
             jsearch_key=cfg.get("JSEARCH_KEY"),
