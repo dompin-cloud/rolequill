@@ -11,11 +11,13 @@ from .google_jobs import GoogleJobsProvider
 from .greenhouse import GreenhouseProvider
 from .jsearch import JSearchProvider
 from .lever import LeverProvider
+from .workday import WorkdayProvider
 
 PROVIDER_CLASSES = {
     "Greenhouse": GreenhouseProvider,
     "Lever": LeverProvider,
     "Ashby": AshbyProvider,
+    "Workday": WorkdayProvider,
 }
 
 USER_AGENT = "JobSearchService/1.0 (+https://localhost) python-requests"
@@ -28,7 +30,7 @@ def _make_session():
 
 
 def fetch_all(max_per_provider=60, workers=16, timeout=12, progress=None,
-              deadline=None, industries=None):
+              deadline=None, industries=None, query=""):
     """Fan out across every provider/company and return a flat list of JobPosting.
 
     `industries` (a set of industry tags from the candidate's resume) drives
@@ -52,6 +54,10 @@ def fetch_all(max_per_provider=60, workers=16, timeout=12, progress=None,
 
     def _one(name, token):
         try:
+            # Workday is query-aware — pass the resume-derived searchText so each large
+            # tenant (CVS has 17k reqs) returns relevant roles, not an arbitrary slice.
+            if name == "Workday":
+                return providers[name].fetch(token, query)
             return providers[name].fetch(token)
         except Exception:
             return []

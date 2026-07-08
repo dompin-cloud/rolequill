@@ -99,19 +99,22 @@ def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
     spoken_languages = lang.parse_spoken(criteria.get("languages") or "")
     desired_geo = geo.desired_regions(location)
 
+    # base keyword query (typed title, else the resume's detected occupation) — used as
+    # Workday searchText and as the seed for the Google/JSearch aggregators below
+    board_query = title_query.strip() or (resume_query or "").strip()
+
     # field-aware roster: scan companies matching the candidate's detected field first
     industries = industries_for(resume_roles)
     raw = fetch_all(max_per_provider=max_per_provider, workers=workers,
                     timeout=timeout, progress=progress, deadline=deadline,
-                    industries=industries)
+                    industries=industries, query=board_query)
 
     # query-based sources (Google Jobs / JSearch) — these are industry-agnostic, so
     # they're how a non-tech resume finds relevant work (the ATS roster is tech-only).
     # Priority: the user's typed title > the resume's detected occupation (role-first,
     # field-agnostic) > raw profile terms > skills. Keep it broad: appending the raw
     # location over-constrains Google; our geo + work-type filters narrow afterwards.
-    google_q = (title_query.strip()
-                or (resume_query or "").strip()
+    google_q = (board_query
                 or " ".join(profile_terms[:4])
                 or " ".join(sorted(resume_skills)[:4]))
     if google_q and work_type in ("remote", "hybrid"):

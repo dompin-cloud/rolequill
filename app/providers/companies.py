@@ -214,6 +214,24 @@ COMPANIES = {
     ('windmill', 'tech'),
     ('zapier', 'tech'),
     ],
+    "Workday": [  # token = 'host|tenant|site' (verified live); huge non-tech tenants
+        ('chewy.wd5.myworkdayjobs.com|chewy|External', 'consumer'),
+        ('target.wd5.myworkdayjobs.com|target|targetcareers', 'consumer'),
+        ('northeastern.wd1.myworkdayjobs.com|northeastern|Careers', 'education'),
+        ('yale.wd1.myworkdayjobs.com|yale|External_Career_Site', 'education'),
+        ('capitalone.wd12.myworkdayjobs.com|capitalone|Capital_One', 'finance'),
+        ('citi.wd5.myworkdayjobs.com|citi|2', 'finance'),
+        ('keybank.wd5.myworkdayjobs.com|keybank|External_Career_Site', 'finance'),
+        ('mastercard.wd1.myworkdayjobs.com|mastercard|CorporateCareers', 'finance'),
+        ('paypal.wd1.myworkdayjobs.com|paypal|jobs', 'finance'),
+        ('statestreet.wd1.myworkdayjobs.com|statestreet|Global', 'finance'),
+        ('cvshealth.wd1.myworkdayjobs.com|cvshealth|CVS_Health_Careers', 'health'),
+        ('comcast.wd5.myworkdayjobs.com|comcast|Comcast_Careers', 'media'),
+        ('disney.wd5.myworkdayjobs.com|disney|disneycareer', 'media'),
+        ('adobe.wd5.myworkdayjobs.com|adobe|external_experienced', 'tech'),
+        ('nvidia.wd5.myworkdayjobs.com|nvidia|NVIDIAExternalCareerSite', 'tech'),
+        ('salesforce.wd12.myworkdayjobs.com|salesforce|External_Career_Site', 'tech'),
+    ],
 }
 
 # map a resume role head-noun -> industry bucket (field-aware company selection)

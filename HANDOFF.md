@@ -92,6 +92,8 @@ Title is **optional** (blank = skills-first).
 - **Admin** (`/admin`): owner-only via `ROLEQUILL_ADMIN_EMAIL` (404 for others). Shows
   users, applications, reply rate, matches. Uses **initials, not emails** (PII) — the
   admin UI never selects/renders email or resume text (backs the privacy-policy claim).
+  **Unlimited searches**: `new_search` skips the credit charge when `g.is_admin` (sets
+  `credit_source='admin'`, excluded from all refund paths); the header chip shows ∞.
 - **Search tips** on dashboard + empty-results state. Source ✓/✗ indicators on dashboard.
 - **Privacy & data control** (`app/main.py` + `templates/legal/`, `templates/account.html`):
   - Public `/privacy` + `/terms` pages (footer links), operated by **Dominic Pinoteau**,
@@ -172,8 +174,20 @@ Numeric env vars are parsed with `_int_env` (blank/bad value → default, never 
   healthtech, consumer/DTC, media, edtech, logistics-tech) — NOT hospital nursing, K-12,
   or skilled trades, whose employers use other ATSes (Workday/iCIMS) and are surfaced via
   the Google Jobs/JSearch aggregators. Roster is easily extended: add `(token, industry)`
-  rows (unknown tokens return zero jobs, harmless). Adding new provider integrations
-  (Workday/iCIMS) would be the next real lever for deep non-tech ATS coverage.
+  rows (unknown tokens return zero jobs, harmless).
+- **B4 DONE — Workday provider** (`providers/workday.py`): the deep non-tech lever. Large
+  employers (hospitals, retail, banks, universities, manufacturers) host their own Workday
+  tenant with a free no-auth CXS JSON API. **16 verified tenants** seeded in
+  `companies.py` under the `"Workday"` key (token = `host|tenant|site`), tagged by industry
+  — CVS Health (17k reqs), Target, Citi, Capital One, Mastercard, State Street, Disney,
+  Comcast, Yale, Northeastern, Chewy, PayPal, KeyBank, Nvidia, Salesforce, Adobe. **Query-
+  aware**: `fetch_all` passes the resume-derived query as Workday `searchText`, so a nurse's
+  search pulls actual "Registered Nurse" roles from CVS/Yale instead of a random slice.
+  List-view only (title/location/date, no description) → scored via B2's role-match on the
+  title. Verified live: nurse resume surfaces RN roles at Yale Health + CVS scored ~85.
+  Discovery yield was 16/54 (wd-number + site-name guessing); the roster grows by adding
+  verified triples. **Next lever: iCIMS** (another big non-tech ATS; messier API) or more
+  Workday tenants.
 
 ## Global expansion (future planning — not started)
 Making RoleQuill viable for users outside the US, ordered by what actually blocks it.
@@ -209,6 +223,10 @@ Two hard gates, then polish. Nothing here is built yet.
   (c) professional privacy/terms + consent banner. Defer i18n + multi-region.
 
 ## Recent commit trail (newest first)
+admin unlimited searches (g.is_admin skips the credit charge, chip shows ∞) →
+industry generalization B4: Workday provider (providers/workday.py) + 16 verified
+Workday tenants (CVS/Target/Citi/Disney/Yale…) — query-aware CXS API for deep non-tech
+coverage (real nursing/retail/finance-ops jobs) →
 industry generalization B3: 194 verified industry-tagged ATS companies (from 137
 all-tech) + field-aware roster selection (companies.select_tokens / industries_for →
 fetch_all) so non-tech resumes scan relevant boards →

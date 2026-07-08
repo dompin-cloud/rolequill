@@ -178,14 +178,19 @@ def new_search():
     search_id = cur.lastrowid
     db.commit()
 
-    # spend a credit (free first, then paid); block (and drop the row) if out
-    source = credits.charge_search(db, g.user["id"])
-    if source is None:
-        db.execute("DELETE FROM searches WHERE id = ?", (search_id,))
-        db.commit()
-        flash("You're out of search credits. Grab a credit pack to keep searching — "
-              "or your free credit refills weekly.", "error")
-        return redirect(url_for("main.credits"))
+    # spend a credit (free first, then paid); block (and drop the row) if out.
+    # The owner/admin account runs unlimited searches (feature testing) — never charged,
+    # never refunded (credit_source 'admin' is excluded from all refund paths).
+    if g.is_admin:
+        source = "admin"
+    else:
+        source = credits.charge_search(db, g.user["id"])
+        if source is None:
+            db.execute("DELETE FROM searches WHERE id = ?", (search_id,))
+            db.commit()
+            flash("You're out of search credits. Grab a credit pack to keep searching — "
+                  "or your free credit refills weekly.", "error")
+            return redirect(url_for("main.credits"))
     db.execute("UPDATE searches SET credit_source = ? WHERE id = ?", (source, search_id))
     db.commit()
 
