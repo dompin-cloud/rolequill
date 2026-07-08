@@ -1,7 +1,15 @@
 # RoleQuill — Session Handoff / Context
 
 Paste this into a new session (or just reference it) to continue without re-deriving
-everything. Last updated: 2026-07-04 (added opt-in email 2FA).
+everything. Last updated: 2026-07-08.
+
+**2026-07-08 session:** result-quality fixes (per-company cap + IDF skill weighting);
+CSRF protection on all POST forms; 2FA remember-device robustness (sliding renewal +
+`ROLEQUILL_COOKIE_DOMAIN` for apex/www) + two low-severity hardening fixes (same-host
+redirect, charge-before-insert); **industry generalization B1→B4** so RoleQuill works for
+any field, not just tech (resume-driven query → resume-agnostic scoring → industry-tagged
+roster with field-aware selection → Workday provider for deep non-tech coverage); admin
+account (`ROLEQUILL_ADMIN_EMAIL`) now runs unlimited searches. All pushed to `main`.
 
 ## What RoleQuill is
 A multi-user **Flask** web service (Python; local 3.14, Render 3.13) that runs an
@@ -24,8 +32,14 @@ score → rank (top 40). Runs in a background thread (`app/search_runner.py`) wi
 120s wall-clock limit.
 
 ### Providers (`app/providers/`)
-- **Greenhouse / Lever / Ashby** — free public per-company ATS APIs; company tokens
-  in `companies.py` (capped by `JOBSEARCH_MAX_COMPANIES`).
+- **Greenhouse / Lever / Ashby** — free public per-company ATS APIs; company tokens in
+  `companies.py`, now **industry-tagged** `(token, industry)` with **field-aware
+  selection** (`select_tokens`/`industries_for`): a search scans boards matching the
+  resume's detected field first (capped by `JOBSEARCH_MAX_COMPANIES` per provider).
+- **Workday** (`workday.py`) — free no-auth CXS JSON API; the deep NON-TECH lever
+  (hospitals/retail/banks/universities). 16 verified tenants in `companies.py` under
+  `"Workday"` (token = `host|tenant|site`). **Query-aware**: `fetch_all(query=…)` passes
+  the resume query as Workday `searchText`. List-view only (no per-job description).
 - **Google Jobs** — SerpApi (`google_jobs.py`), key `SERPAPI_KEY`, endpoint returns
   LinkedIn/Indeed/etc. via Google.
 - **JSearch** — RapidAPI (`jsearch.py`), key `JSEARCH_KEY`. **v5 endpoint is
@@ -34,9 +48,14 @@ score → rank (top 40). Runs in a background thread (`app/search_runner.py`) wi
 
 ### Scoring (`app/pipeline/`)
 `scoring.py` (match + ATS score), `keywords.py` (skill taxonomy, single-pass regex),
-`profile.py` (resume Core Skills/Education/Professional Development), `geo.py`
-(remote region matching), `lang.py` (language requirements), `filters.py` (junk).
-Title is **optional** (blank = skills-first).
+`profile.py` (resume Core Skills/Education/Professional Development **+ occupation
+detection** `detect_roles`/`search_query`), `geo.py` (remote region matching), `lang.py`
+(language requirements), `filters.py` (junk). Title is **optional** (blank = skills-first).
+Scoring is a **two-pass** loop in `pipeline/__init__.py`: pass 1 gates, then IDF rarity
+weights are computed across the candidate pool so ubiquitous skills stop inflating scores;
+pass 2 scores with `skill_component = max(tax_path, role_path)` — the **role_path**
+(`_role_match`) is a field-agnostic occupation match that carries non-tech resumes. Ranking
+applies a **per-company cap** (`MAX_PER_COMPANY=3`) so one big board can't flood the list.
 
 ### Outputs
 - **Excel** (`excel_export.py`) — 6 sheets matching the user's original template.
