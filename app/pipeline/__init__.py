@@ -81,8 +81,8 @@ def _cap_per_company(scored, limit, per_company):
 
 def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
                timeout, query_timeout=None, progress=None, profile_terms=(),
-               serpapi_key=None, google_pages=1, jsearch_key=None, jsearch_pages=1,
-               time_limit=None):
+               resume_query="", serpapi_key=None, google_pages=1, jsearch_key=None,
+               jsearch_pages=1, time_limit=None):
     """criteria: title_query, location, min_pay, work_type, languages.
     Returns (ranked_jobs, stats). Raises SearchTimeout if it exceeds time_limit secs."""
     deadline = (time.monotonic() + time_limit) if time_limit else None
@@ -101,11 +101,13 @@ def run_search(criteria: dict, resume_skills, *, max_per_provider, workers,
     raw = fetch_all(max_per_provider=max_per_provider, workers=workers,
                     timeout=timeout, progress=progress, deadline=deadline)
 
-    # query-based sources (Google Jobs) — title, else top resume skills/terms.
-    # Keep the query broad: appending the raw location ("Remote USA") over-constrains
-    # Google and returns nothing. Just nudge "remote" when relevant; our own geo +
-    # work-type filters narrow the results afterward.
+    # query-based sources (Google Jobs / JSearch) — these are industry-agnostic, so
+    # they're how a non-tech resume finds relevant work (the ATS roster is tech-only).
+    # Priority: the user's typed title > the resume's detected occupation (role-first,
+    # field-agnostic) > raw profile terms > skills. Keep it broad: appending the raw
+    # location over-constrains Google; our geo + work-type filters narrow afterwards.
     google_q = (title_query.strip()
+                or (resume_query or "").strip()
                 or " ".join(profile_terms[:4])
                 or " ".join(sorted(resume_skills)[:4]))
     if google_q and work_type in ("remote", "hybrid"):

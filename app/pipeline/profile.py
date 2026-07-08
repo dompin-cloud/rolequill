@@ -146,6 +146,132 @@ def _labelled_lines(text: str):
     return core_c, edu_c, dev_c
 
 
+# --- occupation detection (industry-agnostic) --------------------------------
+# Broad set of role head-nouns spanning fields. Matching one as a whole word marks
+# a likely job-title phrase; we capture up to two preceding modifier/capitalized
+# words ("Registered Nurse", "Senior Staff Accountant") and rank by frequency, so
+# the aggregator query targets the candidate's ACTUAL field — not the tech roster.
+_ROLE_HEADS = {
+    # tech / data
+    "engineer", "developer", "programmer", "architect", "administrator", "analyst",
+    "scientist", "technologist", "technician", "devops", "sysadmin",
+    # healthcare
+    "nurse", "physician", "doctor", "surgeon", "dentist", "hygienist", "pharmacist",
+    "therapist", "paramedic", "phlebotomist", "radiographer", "sonographer",
+    "practitioner", "psychologist", "dietitian", "optometrist", "veterinarian",
+    "midwife", "aide", "caregiver", "medic", "epidemiologist",
+    # business / office / finance
+    "manager", "director", "supervisor", "coordinator", "specialist", "officer",
+    "executive", "consultant", "accountant", "bookkeeper", "auditor", "controller",
+    "recruiter", "representative", "clerk", "receptionist", "secretary", "planner",
+    "buyer", "estimator", "strategist", "generalist", "partner", "advisor", "agent",
+    "broker", "underwriter", "adjuster", "teller", "cashier", "banker", "actuary",
+    "associate", "assistant",
+    # sales / marketing
+    "salesperson", "seller", "marketer", "merchandiser", "copywriter",
+    # education
+    "teacher", "professor", "instructor", "tutor", "educator", "principal",
+    "lecturer", "librarian", "paraprofessional", "counselor",
+    # legal
+    "attorney", "lawyer", "paralegal", "counsel", "mediator",
+    # trades / labor / logistics
+    "electrician", "plumber", "carpenter", "welder", "machinist", "mechanic",
+    "installer", "painter", "roofer", "mason", "fabricator", "operator", "laborer",
+    "foreman", "superintendent", "driver", "dispatcher", "logistician", "picker",
+    "packer", "custodian", "janitor", "groundskeeper", "landscaper", "farmer",
+    "rancher", "miner", "surveyor", "inspector",
+    # food / hospitality
+    "chef", "cook", "baker", "server", "waiter", "waitress", "bartender", "barista",
+    "host", "housekeeper", "concierge", "valet",
+    # creative / media
+    "designer", "artist", "illustrator", "animator", "photographer", "videographer",
+    "editor", "writer", "journalist", "producer", "stylist", "curator",
+    # personal care / service / public safety
+    "barber", "cosmetologist", "esthetician", "trainer", "groomer", "firefighter",
+    "guard", "paralegal",
+}
+
+# Modifiers that legitimately precede a role head ("Senior", "Registered", "Line"…).
+# A whitelist (rather than "any capitalized word") is deliberate — it keeps company
+# names and date fragments ("TechCo", "Present") out of the detected title phrase.
+_ROLE_MODS = {
+    # seniority / rank
+    "senior", "junior", "lead", "principal", "staff", "chief", "head", "associate",
+    "assistant", "master", "journeyman", "apprentice", "vice", "executive",
+    "director", "deputy", "entry", "mid", "level",
+    # licensure / clinical
+    "registered", "licensed", "certified", "clinical", "surgical", "pediatric",
+    "geriatric", "emergency", "intensive", "operating", "dental", "medical",
+    "respiratory", "physical", "occupational", "speech", "behavioral", "mental",
+    "home", "charge", "travel", "unit", "ward", "care", "patient",
+    # business function
+    "regional", "district", "general", "corporate", "field", "operations", "project",
+    "product", "program", "account", "sales", "marketing", "financial", "finance",
+    "administrative", "office", "technical", "customer", "client", "digital",
+    "creative", "graphic", "content", "social", "media", "brand", "public", "event",
+    "human", "talent", "quality", "safety", "environmental", "supply", "logistics",
+    "inventory", "procurement", "payroll", "tax", "audit", "cost", "credit", "loan",
+    "branch", "store", "retail", "warehouse", "delivery", "route",
+    # engineering / trade specialties
+    "mechanical", "electrical", "civil", "industrial", "software", "data", "systems",
+    "network", "security", "support", "help", "service", "maintenance", "facilities",
+    "equipment", "heavy", "line", "process", "production", "manufacturing",
+    # food / hospitality
+    "prep", "sous", "pastry", "grill", "line", "kitchen", "food", "banquet",
+    # education
+    "special", "elementary", "secondary", "substitute", "teaching", "school",
+    # shift qualifiers
+    "night", "day", "shift", "front", "back", "floor",
+}
+
+_WORD_RE = re.compile(r"[A-Za-z][A-Za-z.&/+-]*")
+
+
+def detect_roles(text: str, top: int = 3):
+    """Return the candidate's most prominent job-title phrases, most frequent first.
+
+    Scans the whole resume for occupation head-nouns and grabs up to two preceding
+    modifier/capitalized words to form the title phrase. Field-agnostic: works for
+    'Registered Nurse', 'Staff Accountant', 'Line Cook', 'Software Engineer', etc.
+    """
+    words = _WORD_RE.findall(text or "")
+    lower = [w.lower() for w in words]
+    from collections import Counter
+    phrases = Counter()
+    for i, w in enumerate(lower):
+        if w not in _ROLE_HEADS:
+            continue
+        parts = [words[i]]
+        j, grabbed = i - 1, 0
+        while j >= 0 and grabbed < 2:
+            pw = lower[j]
+            # only whitelisted modifiers — keeps company names / dates out of the title
+            if pw in _ROLE_MODS and pw not in _ROLE_HEADS:
+                parts.insert(0, words[j])
+                j -= 1
+                grabbed += 1
+            else:
+                break
+        phrases[" ".join(parts).lower()] += 1
+    # prefer multi-word phrases on ties (more specific than a bare head noun)
+    ranked = sorted(phrases.items(), key=lambda kv: (kv[1], len(kv[0].split())),
+                    reverse=True)
+    return [p for p, _ in ranked[:top]]
+
+
+def search_query(text: str, profile: dict | None = None) -> str:
+    """Industry-agnostic aggregator query derived from the resume, role-first.
+
+    Falls back to the strongest Core-Skills terms (never education/location noise)
+    when no occupation is detected, and to '' when the resume yields nothing usable.
+    """
+    roles = detect_roles(text, top=1)
+    if roles:
+        return roles[0]
+    core = [c for c in ((profile or {}).get("core_skills") or []) if len(c) >= 4]
+    return " ".join(core[:3])
+
+
 def build_profile(text: str) -> dict:
     """Return a profile dict with section terms and a combined term set.
 
@@ -164,4 +290,5 @@ def build_profile(text: str) -> dict:
         "education": sorted(edu)[:20],
         "prof_dev": sorted(dev)[:20],
         "terms": sorted(combined),
+        "roles": detect_roles(text, top=3),   # detected occupation(s), most frequent first
     }

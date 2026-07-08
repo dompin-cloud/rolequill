@@ -8,6 +8,7 @@ from . import credits
 from .db import standalone_connection
 from .pipeline import run_search
 from .pipeline.excel_export import build_workbook, post_status
+from .pipeline.profile import search_query
 from .pipeline.report import build_report
 from .providers.base import SearchTimeout
 
@@ -46,6 +47,10 @@ def _run(app, search_id):
             except (ValueError, TypeError):
                 profile = {}
         profile_terms = profile.get("terms", [])
+        # industry-agnostic query for Google Jobs / JSearch, derived from the resume's
+        # detected occupation. Computed from the stored resume text so it also applies
+        # retroactively to resumes uploaded before role detection existed.
+        resume_query = search_query(resume["text"], profile) if resume else ""
 
         _set(conn, search_id, status="running",
              progress="Starting scan across public ATS boards…")
@@ -68,6 +73,7 @@ def _run(app, search_id):
             query_timeout=cfg.get("QUERY_TIMEOUT", 30),
             progress=progress,
             profile_terms=profile_terms,
+            resume_query=resume_query,
             serpapi_key=cfg.get("SERPAPI_KEY"),
             google_pages=cfg.get("GOOGLE_JOBS_PAGES", 1),
             jsearch_key=cfg.get("JSEARCH_KEY"),

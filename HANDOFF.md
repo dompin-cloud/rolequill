@@ -147,6 +147,16 @@ Numeric env vars are parsed with `_int_env` (blank/bad value → default, never 
 - **Future ideas:** surface application notes/location as columns (captured + exported,
   not yet displayed); SQLite→Postgres + task queue at scale; email-forward assist for
   auto reply-tracking; per-source reply-rate on admin.
+- **Industry generalization (make it work for ANY field, not just tech):** the ATS
+  roster (`companies.py`, 137 tech companies) and skill taxonomy (`keywords.py`, all
+  software/AI/SaaS) hardcode a tech universe; the resume only personalizes ranking.
+  Plan (owner chose to generalize): **B1 DONE** — aggregator query (Google/JSearch) is
+  now resume-driven via `profile.detect_roles`/`search_query` (field-agnostic occupation
+  detection), so a nurse/accountant/chef resume searches its actual field. **B2 (next)**:
+  resume-agnostic scoring so non-tech jobs survive the skills-first gate (`SKILL_FLOOR`)
+  and rank on raw résumé-term overlap when the tech taxonomy finds nothing — without it,
+  B1's non-tech results can still be filtered out by scoring. **B3**: industry-segmented
+  company rosters for real non-tech ATS coverage (large content effort).
 
 ## Global expansion (future planning — not started)
 Making RoleQuill viable for users outside the US, ordered by what actually blocks it.
@@ -182,6 +192,8 @@ Two hard gates, then polish. Nothing here is built yet.
   (c) professional privacy/terms + consent banner. Defer i18n + multi-region.
 
 ## Recent commit trail (newest first)
+industry generalization B1: resume-driven aggregator query (profile.detect_roles +
+search_query) so non-tech resumes search their real field via Google Jobs/JSearch →
 security/quality pass: CSRF tokens on all POSTs (app/csrf.py) → 2FA remember-device
 sliding renewal + configurable cookie domain (apex/www) → same-host redirect guard +
 charge-before-insert ordering fix → result quality: per-company cap (3) + IDF skill
