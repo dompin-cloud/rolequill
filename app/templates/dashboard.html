@@ -33,6 +33,31 @@
               <button class="btn-link-danger" type="submit"
                       title="Delete this resume and its file">Delete</button>
             </form>
+            {% set prof = (r.profile|from_json) if r.profile else {} %}
+            {% if prof.ai %}
+              <details class="ai-insights">
+                <summary>AI career analysis</summary>
+                {% if prof.ai.summary %}<p class="ai-summary">{{ prof.ai.summary }}</p>{% endif %}
+                {% if prof.ai.target_roles %}
+                  <p class="ai-roles"><strong>Target roles:</strong>
+                    {{ prof.ai.target_roles|join(', ') }}
+                    {% if prof.ai.seniority %}<span class="muted">· {{ prof.ai.seniority }}</span>{% endif %}
+                  </p>
+                {% endif %}
+                <div class="ai-cols">
+                  {% if prof.ai.strengths %}
+                    <div><strong>Strengths</strong>
+                      <ul>{% for s in prof.ai.strengths %}<li>{{ s }}</li>{% endfor %}</ul>
+                    </div>
+                  {% endif %}
+                  {% if prof.ai.gaps %}
+                    <div><strong>To improve</strong>
+                      <ul>{% for gap in prof.ai.gaps %}<li>{{ gap }}</li>{% endfor %}</ul>
+                    </div>
+                  {% endif %}
+                </div>
+              </details>
+            {% endif %}
           </li>
         {% endfor %}
       </ul>

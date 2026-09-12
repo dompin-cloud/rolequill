@@ -13,7 +13,7 @@ from werkzeug.utils import secure_filename
 
 import functools
 
-from . import credits, mailer, payments
+from . import ai, credits, mailer, payments
 from .auth import login_required
 from .db import get_db
 from .pipeline.resume import analyze_resume, skills_to_json
@@ -103,6 +103,13 @@ def upload_resume():
               "error")
         return redirect(url_for("main.dashboard"))
 
+    # optional AI coaching pass (off the search path — one call at upload time).
+    # Best-effort: stored under profile["ai"], absent if AI is disabled or the call
+    # misses. Never blocks the upload from succeeding.
+    insights = ai.resume_insights(text)
+    if insights:
+        profile = {**profile, "ai": insights}
+
     db = get_db()
     db.execute(
         "INSERT INTO resumes (user_id, filename, stored_path, text, skills, profile) "
@@ -111,9 +118,11 @@ def upload_resume():
          json.dumps(profile)))
     db.commit()
     n_terms = len(profile.get("terms", []))
-    flash(f"Resume uploaded — detected {len(skills)} core skills and {n_terms} "
-          f"profile keywords from your skills, education & professional development.",
-          "success")
+    msg = (f"Resume uploaded — detected {len(skills)} core skills and {n_terms} "
+           f"profile keywords from your skills, education & professional development.")
+    if insights:
+        msg += "  AI career analysis is ready below."
+    flash(msg, "success")
     return redirect(url_for("main.dashboard"))
 
 

@@ -209,3 +209,17 @@ h4.ok { color: #145222; } h4.warn { color: #8a5a00; }
   .features { grid-template-columns: 1fr 1fr; }
   .grid-2 { grid-template-columns: 1fr; }
 }
+
+/* AI career analysis (resume card) */
+.ai-insights { margin-top: 8px; border: 1px solid var(--line); border-radius: 8px;
+  background: #fff; padding: 4px 10px; }
+.ai-insights summary { cursor: pointer; color: var(--navy); font-weight: 600;
+  font-size: 13px; padding: 4px 0; }
+.ai-insights[open] summary { border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.ai-summary { margin: 6px 0; font-size: 14px; line-height: 1.5; }
+.ai-roles { margin: 6px 0; font-size: 13px; }
+.ai-cols { display: flex; gap: 20px; flex-wrap: wrap; }
+.ai-cols > div { flex: 1 1 220px; }
+.ai-cols strong { font-size: 13px; color: var(--navy); }
+.ai-cols ul { margin: 4px 0 8px; padding-left: 18px; }
+.ai-cols li { font-size: 13px; line-height: 1.45; margin-bottom: 3px; }

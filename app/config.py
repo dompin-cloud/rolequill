@@ -115,6 +115,15 @@ class Config:
     RESEND_FROM = ((os.environ.get("RESEND_FROM") or "").strip().strip('"').strip("'").strip()
                    or "RoleQuill <noreply@rolequill.com>")
 
+    # AI features via the Anthropic Messages API (optional; all AI degrades to the
+    # non-AI behavior until a key is set). Raw HTTPS through `requests` — no SDK, no
+    # new deps (matches mailer.py), so the 512MB Starter footprint stays flat. Model
+    # split is cost-optimized: cheap Haiku for bulk/per-job work, Sonnet for the
+    # one-shot resume analysis. Override either via env to change models in one place.
+    ANTHROPIC_API_KEY = (os.environ.get("ANTHROPIC_API_KEY") or "").strip() or None
+    AI_MODEL_BULK = (os.environ.get("ROLEQUILL_AI_MODEL_BULK") or "").strip() or "claude-haiku-4-5"
+    AI_MODEL_ANALYSIS = (os.environ.get("ROLEQUILL_AI_MODEL_ANALYSIS") or "").strip() or "claude-sonnet-5"
+
     # Payments / credits — 'stub' (instant test fulfillment) or 'stripe' (live)
     PAYMENTS_MODE = os.environ.get("ROLEQUILL_PAYMENTS_MODE", "stub")
     STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY")
