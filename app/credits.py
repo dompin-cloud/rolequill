@@ -133,3 +133,46 @@ def reconcile_orphans(db):
         (_now().isoformat(timespec="seconds"),))
     db.commit()
     return len(rows)
+
+
+# A search should always reach a terminal state within SEARCH_TIME_LIMIT (120s). Give
+# a wide margin so a legitimately in-flight search is never touched, but anything older
+# is provably dead.
+STALE_SEARCH_MINUTES = 5
+
+
+def sweep_stale_searches(db, older_than_minutes=STALE_SEARCH_MINUTES):
+    """Runtime safety net: cancel + refund searches stuck running/pending past the
+    wall-clock limit, WITHOUT needing a restart.
+
+    reconcile_orphans only runs at startup, so on a long-lived process (no redeploy for
+    weeks) a search that overran its deadline — or a provider fetch wedged below its
+    socket timeout — would otherwise sit "running" forever. This is age-bounded so it
+    never disturbs a genuinely in-flight search (those finish within SEARCH_TIME_LIMIT).
+
+    Safe to call opportunistically on any request: the flip doubles as an atomic claim
+    (the UPDATE's `status IN (...)` guard means only the caller that actually changes a
+    row issues its refund), so concurrent worker threads can't double-refund.
+    """
+    cutoff = f"-{int(older_than_minutes)} minutes"
+    rows = db.execute(
+        "SELECT id, user_id, credit_source FROM searches "
+        "WHERE status IN ('running', 'pending') "
+        "AND created_at < datetime('now', ?)", (cutoff,)).fetchall()
+    if not rows:
+        return 0
+    swept = 0
+    ts = _now().isoformat(timespec="seconds")
+    for r in rows:
+        cur = db.execute(
+            "UPDATE searches SET status = 'error', result_count = 0, "
+            "error = 'Cancelled — exceeded the time limit.', "
+            "progress = 'Search ran too long and was cancelled; your credit was refunded.', "
+            "finished_at = ? WHERE id = ? AND status IN ('running', 'pending')",
+            (ts, r["id"]))
+        if cur.rowcount == 1:  # we won the claim -> we own the refund
+            swept += 1
+            if r["credit_source"] in ("free", "paid"):
+                refund_search(db, r["user_id"], r["credit_source"])
+    db.commit()
+    return swept

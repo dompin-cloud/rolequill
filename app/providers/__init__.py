@@ -1,6 +1,7 @@
 """Provider registry + parallel fan-out fetch across all free ATS sources."""
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import TimeoutError as FuturesTimeout
 
 import requests
 
@@ -68,15 +69,28 @@ def fetch_all(max_per_provider=60, workers=16, timeout=12, progress=None,
     try:
         futures = {ex.submit(_one, name, token): (name, token)
                    for name, token in tasks if token}
-        for fut in as_completed(futures):
-            results.extend(fut.result())
-            done += 1
-            if progress:
-                progress(done, total,
-                         f"Scanned {done}/{total} boards — {len(results)} raw postings")
-            if deadline and time.monotonic() > deadline:
-                raise SearchTimeout("fetch phase exceeded time limit")
+        # as_completed MUST carry a timeout tied to the deadline. Without it, one
+        # wedged board fetch (a server that trickles bytes never trips requests'
+        # per-socket timeout) parks this loop forever waiting for the next future,
+        # so the deadline check below is never reached — the exact hang that let
+        # searches sit "running" for weeks. The timeout is the whole-phase budget
+        # measured from now; on expiry as_completed raises on the next iteration.
+        budget = max(0.0, deadline - time.monotonic()) if deadline else None
+        try:
+            for fut in as_completed(futures, timeout=budget):
+                results.extend(fut.result())
+                done += 1
+                if progress:
+                    progress(done, total,
+                             f"Scanned {done}/{total} boards — {len(results)} raw postings")
+                if deadline and time.monotonic() > deadline:
+                    raise SearchTimeout("fetch phase exceeded time limit")
+        except FuturesTimeout:
+            raise SearchTimeout("fetch phase exceeded time limit")
     finally:
+        # cancel_futures kills only QUEUED work; a board thread already blocked in a
+        # socket read keeps running (daemon) until requests' timeout frees it, but the
+        # search no longer waits on it.
         ex.shutdown(wait=False, cancel_futures=True)
     return results
 

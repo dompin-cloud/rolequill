@@ -58,6 +58,9 @@ def index():
 @login_required
 def dashboard():
     db = get_db()
+    # runtime safety net: flip + refund any search wedged past the time limit, so a
+    # long-lived process (no restart) never shows a search stuck "running" for weeks.
+    credits.sweep_stale_searches(db)
     resumes = db.execute(
         "SELECT * FROM resumes WHERE user_id = ? ORDER BY created_at DESC",
         (g.user["id"],)).fetchall()
@@ -598,6 +601,9 @@ def search_report(search_id):
 @bp.route("/search/<int:search_id>/status")
 @login_required
 def search_status(search_id):
+    # a wedged search would otherwise poll "running" forever; sweep before reading so
+    # the watching browser sees the cancelled+refunded terminal state right away.
+    credits.sweep_stale_searches(get_db())
     s = _owned_search(search_id)
     return jsonify({
         "status": s["status"],
